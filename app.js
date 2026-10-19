@@ -1,4 +1,4 @@
-/* Katana Grooming · Registro de citas
+/* Katana's Grooming · Registro de citas
  * Los registros se guardan en el navegador (localStorage) y se descargan como Excel.
  */
 (() => {
@@ -24,7 +24,7 @@
         { name: 'hora', label: 'Hora', type: 'time', req: true },
         { name: 'servicios', label: 'Servicios agendados', type: 'check', options: SERVICIOS, other: true, req: true },
         { name: 'canal', label: '¿Por dónde agendó?', type: 'radio', options: CANALES, other: true, req: true },
-        { name: 'tipo', label: '¿El perro ya tiene ficha en Katana?', type: 'radio', options: TIPOS, stack: true, req: true,
+        { name: 'tipo', label: "¿El perro ya tiene ficha en Katana's?", type: 'radio', options: TIPOS, stack: true, req: true,
           hint: 'Elige "Cliente de antes, sin ficha" para quienes ya venían antes de este registro.' }
       ]
     },
@@ -45,14 +45,14 @@
     nuevo: {
       title: 'Cliente nuevo',
       fields: [
-        { name: 'comoConocio', label: '¿Cómo conoció Katana?', type: 'radio', other: true, req: true,
+        { name: 'comoConocio', label: "¿Cómo conoció Katana's?", type: 'radio', other: true, req: true,
           options: ['Instagram', 'TikTok', 'Facebook', 'Google', 'Se lo recomendó alguien', 'Pasó por el local'] }
       ]
     },
     antes: {
       title: 'Cliente de antes',
       fields: [
-        { name: 'desdeCuando', label: '¿Desde cuándo viene a Katana?', type: 'radio', req: true,
+        { name: 'desdeCuando', label: "¿Desde cuándo viene a Katana's?", type: 'radio', req: true,
           options: ['Menos de 1 año', 'De 1 a 3 años', 'De 3 a 5 años', 'Más de 5 años'] },
         { name: 'frecuencia', label: '¿Cada cuánto trae al perro?', type: 'radio',
           options: ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'] }
@@ -101,7 +101,7 @@
       intro: 'Pregúntale al cliente antes de marcar.',
       fields: [
         { name: 'autoriza', label: 'Uso de datos', type: 'consent', req: true,
-          text: 'El cliente autoriza a Katana Grooming a guardar estos datos para agendar citas y cuidar a su perro.' },
+          text: "El cliente autoriza a Katana's Grooming a guardar estos datos para agendar citas y cuidar a su perro." },
         { name: 'fotos', label: '¿Autoriza publicar fotos del perro en redes?', type: 'radio', req: true, options: ['Sí', 'No'] },
         { name: 'recordatorios', label: '¿Acepta recordatorios por WhatsApp (citas y cumpleaños del perro)?', type: 'radio', req: true, options: ['Sí', 'No'] }
       ]
@@ -121,7 +121,7 @@
     ['esterilizado', 'Esterilizado'], ['cumple', 'Cumpleaños'], ['vacunas', 'Vacunas al día'],
     ['alergias', 'Alergias, piel o medicamentos'], ['caracter', 'Carácter en grooming'], ['notas', 'Notas del cliente'],
     ['novedades', 'Novedades'], ['nombre', 'Cliente'], ['whatsapp', 'WhatsApp'], ['correo', 'Correo'],
-    ['colonia', 'Municipio o colonia'], ['contacto', 'Contacto preferido'], ['comoConocio', 'Cómo conoció Katana'],
+    ['colonia', 'Municipio o colonia'], ['contacto', 'Contacto preferido'], ['comoConocio', "Cómo conoció Katana's"],
     ['desdeCuando', 'Cliente desde'], ['frecuencia', 'Frecuencia'], ['autoriza', 'Autoriza uso de datos'],
     ['fotos', 'Fotos en redes'], ['recordatorios', 'Recordatorios por WhatsApp']
   ];
@@ -171,31 +171,6 @@
   };
   const lastExport = () => { try { return localStorage.getItem(KEYS.export); } catch { return null; } };
   const findFicha = (wa, perro) => fichas.find(f => keyOf(f.whatsapp, f.perro) === keyOf(wa, perro));
-
-  // ---------- Perro asomado ----------
-  const DOG = `
-    <svg class="dog" viewBox="0 0 120 90" aria-hidden="true" focusable="false">
-      <defs><clipPath id="sobre-repisa-ID"><rect x="0" y="0" width="120" height="79"/></clipPath></defs>
-      <g clip-path="url(#sobre-repisa-ID)">
-        <g class="peek">
-          <path d="M30 26 L35 2 L49 18 Z" fill="#FBFCFB" stroke="#1D2354" stroke-width="3" stroke-linejoin="round"/>
-          <path d="M71 18 L85 2 L90 26 Z" fill="#9A6238" stroke="#1D2354" stroke-width="3" stroke-linejoin="round"/>
-          <path d="M60 10 C86 10 95 34 92 54 C89 72 75 82 60 82 C45 82 31 72 28 54 C25 34 34 10 60 10 Z" fill="#FBFCFB"/>
-          <path d="M69 13 C80 14 88 22 90 32 C83 35 74 32 70 26 C67 22 66 17 69 13 Z" fill="#9A6238"/>
-          <path d="M60 10 C86 10 95 34 92 54 C89 72 75 82 60 82 C45 82 31 72 28 54 C25 34 34 10 60 10 Z" fill="none" stroke="#1D2354" stroke-width="3"/>
-          <ellipse cx="47" cy="43" rx="4" ry="2.6" fill="#1D2354" transform="rotate(-12 47 43)"/>
-          <ellipse cx="73" cy="43" rx="4" ry="2.6" fill="#1D2354" transform="rotate(12 73 43)"/>
-          <ellipse cx="60" cy="66" rx="7.5" ry="5.2" fill="#2A1F1F"/>
-        </g>
-      </g>
-      <g class="paws">
-        <ellipse cx="40" cy="80" rx="12" ry="7" fill="#FBFCFB" stroke="#1D2354" stroke-width="3"/>
-        <ellipse cx="80" cy="80" rx="12" ry="7" fill="#FBFCFB" stroke="#1D2354" stroke-width="3"/>
-        <path d="M36 77 v5 M44 77 v5 M76 77 v5 M84 77 v5" stroke="#1D2354" stroke-width="2" stroke-linecap="round"/>
-      </g>
-    </svg>`;
-  let dogCount = 0;
-  const placeDog = slot => { dogCount++; slot.innerHTML = DOG.replaceAll('-ID', '-' + dogCount); };
 
   // ---------- Render de campos ----------
   const normOpt = o => typeof o === 'string' ? { v: o, l: o } : o;
@@ -465,7 +440,6 @@
   function showDone(c, note) {
     form.hidden = true;
     const done = $('#done');
-    placeDog($('.dog-slot', done));
     $('#doneSummary').textContent = `${c.perro} · ${fmtLong(c.fecha)}, ${c.hora}`;
     $('#doneNote').textContent = [c.servicios.join(', '), note].filter(Boolean).join('. ');
     done.hidden = false;
@@ -481,7 +455,6 @@
     idx = 0;
     $('#done').hidden = true;
     form.hidden = false;
-    placeDog($('.dog-slot', form));
     show(true);
   }
 
@@ -613,7 +586,7 @@
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheet(sortedCitas, CITA_COLS), 'Citas');
     XLSX.utils.book_append_sheet(wb, sheet(sortedFichas, FICHA_COLS), 'Fichas');
-    XLSX.writeFile(wb, `Katana_Citas_y_Clientes_${today()}.xlsx`);
+    XLSX.writeFile(wb, `Katanas_Grooming_Citas_y_Clientes_${today()}.xlsx`);
     try { localStorage.setItem(KEYS.export, new Date().toISOString()); } catch { /* sin almacenamiento */ }
     renderRegistros();
     toast('Excel descargado');
@@ -682,7 +655,6 @@
 
   // ---------- Inicio ----------
   renderSteps();
-  placeDog($('.dog-slot', form));
   updateCount();
   show();
 })();

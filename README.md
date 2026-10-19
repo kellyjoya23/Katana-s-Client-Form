@@ -1,16 +1,24 @@
-# Registro de citas · Katana Grooming
+# Registro de citas · Katana's Grooming
 
-App web para que Tere registre cada cita y, de paso, arme la base de clientes de Katana. Descarga todo en un Excel con dos hojas: **Citas** (una fila por cita) y **Fichas** (una fila por perro).
+App web para que Tere registre cada cita y, de paso, arme la base de clientes de Katana's. Descarga todo en un Excel con dos hojas: **Citas** (una fila por cita) y **Fichas** (una fila por perro).
 
 ## Archivos
 
 | Archivo | Qué es |
 | --- | --- |
 | `index.html` | La página |
-| `styles.css` | Estilos con la paleta y tipografías de Katana |
+| `styles.css` | Estilos con el design system v3 (paleta y tipografías) |
 | `app.js` | Formulario, registros y Excel |
 
 No necesita instalar nada ni compilar. El Excel se genera con SheetJS, que se carga desde su CDN oficial.
+
+## Tipografía
+
+Los títulos usan **Days One** (Google Fonts). Gilroy es una fuente de pago, así que la página la usa si está instalada en el dispositivo y, si no, muestra **Outfit**, la alternativa gratuita más parecida. Para que Gilroy se vea en todos los dispositivos, sube sus archivos `.woff2` al repositorio y agrega su `@font-face` al inicio de `styles.css`.
+
+## Logo
+
+El encabezado muestra un monograma provisional. Para usar el logo oficial, sube `logo.svg` al repositorio y sigue el comentario en `index.html`.
 
 ## Publicar en Vercel
 
