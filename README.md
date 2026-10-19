@@ -11,6 +11,8 @@ App web para que el equipo de Katana's registre cada cita y, de paso, arme la ba
 | `app.js` | Inicio de sesión, formulario, registros y Excel |
 | `config.js` | Conexión con Supabase (aquí van la URL y la clave pública) |
 | `supabase/schema.sql` | Tablas y reglas de seguridad de la base de datos |
+| `supabase/functions/avisos-correo/index.ts` | Función que envía los correos automáticos |
+| `supabase/revision_diaria.sql` | Tarea diaria (8:00 a. m.) que dispara los correos |
 
 No hay que instalar nada ni compilar.
 
@@ -51,12 +53,29 @@ Para quitarle el acceso a alguien, borra su usuario en **Authentication → User
 
 ## Cómo funciona
 
-- **Nueva cita:** fecha, hora, servicios, canal y si el perro ya tiene ficha.
-  - *Ya tiene ficha:* WhatsApp + nombre del perro. La app muestra su ficha y avisos de carácter (por ejemplo, "Puede morder si se asusta").
-  - *Cliente nuevo* o *de antes, sin ficha:* ficha completa del cliente y del perro, salud, carácter y permisos. Si el perro ya existía con ese número, se actualiza su ficha en lugar de duplicarla, conservando lo que no se volvió a llenar.
-- **Registros:** citas próximas y pasadas, fichas por perro, **Descargar Excel** y **Actualizar** (trae lo que otras personas registraron).
-- **Registros de la versión anterior:** si un dispositivo usó la versión que guardaba en el navegador, en *Registros* aparece **Subir a la base de datos** para pasarlos a Supabase una sola vez.
-- La base ya tiene columnas para el **check-in y check-out** (estado, llegada, salida y notas), listas para el siguiente paso.
+- **Hoy** (se abre al iniciar sesión):
+  - **Citas de hoy:** cada perro con su estado. **Recibir** guarda la hora de llegada y una nota de cómo llegó y qué dejó (nudos, heridas, pulgas; collar, correa). **Entregar** guarda la hora de salida y lo que se le hizo. **No vino** marca la cita como cancelada.
+  - **Mensajes por enviar:** la app arma cada mensaje y abre el WhatsApp del cliente con el texto listo; quien atiende solo toca enviar. **No enviar** lo quita de la lista. Cada mensaje queda registrado para no repetirlo.
+- **Mensajes que se preparan solos:**
+  | Mensaje | Cuándo | A quién |
+  | --- | --- | --- |
+  | Confirmación de cita | Al agendar | Todos |
+  | Cita de mañana | La víspera, si la cita se agendó antes de ese día | Quien no dijo "No" a recordatorios |
+  | Le toca volver | Cuando pasan 15 días, 1 mes o 2 meses (según la frecuencia del perro) desde su última visita y no tiene otra cita | Solo quien aceptó recordatorios |
+  | Listo para recoger | Al entregar el perro | Todos |
+- **Correo automático:** la confirmación, el aviso de la víspera y "le toca volver" también salen por correo desde katanagrooming@gmail.com a quien dejó su correo (la confirmación, al guardar la cita; lo demás, todos los días a las 8:00 a. m.). "Listo para recoger" va solo por WhatsApp.
+- **Nueva cita:** fecha, hora, servicios, canal y si el perro ya tiene ficha. La ficha incluye **cada cuánto debería venir**, que es lo que activa "le toca volver".
+- **Registros:** citas y fichas, **Descargar Excel** (con estado, llegada y salida) y **Actualizar**.
+
+## Activar los correos (una sola vez)
+
+Los correos salen de katanagrooming@gmail.com con una **contraseña de aplicación** de Google (no es la contraseña normal):
+
+1. Entra a myaccount.google.com con katanagrooming@gmail.com → **Seguridad** → activa la **Verificación en dos pasos** si no está activa.
+2. Busca **Contraseñas de aplicaciones**, crea una llamada `Katana app` y copia las 16 letras.
+3. En Supabase → **Edge Functions → Secrets**, agrega `GMAIL_APP_PASSWORD` con esas 16 letras.
+
+Mientras no esté, todo lo demás funciona; solo no salen correos.
 
 ## Tipografía
 

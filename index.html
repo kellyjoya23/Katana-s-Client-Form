@@ -29,7 +29,8 @@
       </div>
       <button type="button" class="logout" id="logout" hidden>Cerrar sesión</button>
       <div class="tabs" role="tablist" aria-label="Secciones" id="tabs" hidden>
-        <button class="tab" role="tab" id="tab-nueva" aria-controls="view-nueva" aria-selected="true">Nueva cita</button>
+        <button class="tab" role="tab" id="tab-hoy" aria-controls="view-hoy" aria-selected="true">Hoy <span class="count" id="countHoy" hidden>0</span></button>
+        <button class="tab" role="tab" id="tab-nueva" aria-controls="view-nueva" aria-selected="false">Nueva cita</button>
         <button class="tab" role="tab" id="tab-registros" aria-controls="view-registros" aria-selected="false">Registros <span class="count" id="count">0</span></button>
       </div>
     </div>
@@ -55,6 +56,20 @@
       </form>
     </section>
 
+    <section id="view-hoy" role="tabpanel" aria-labelledby="tab-hoy" hidden>
+      <div class="card reg">
+        <div class="reg-head">
+          <h2>Hoy</h2>
+          <p class="reg-stats" id="hoyFecha"></p>
+        </div>
+        <h3 class="sec-title">Citas de hoy</h3>
+        <div id="hoyCitas"></div>
+        <h3 class="sec-title">Mensajes por enviar</h3>
+        <p class="note sec-note">Toca "Enviar por WhatsApp": se abre el chat del cliente con el mensaje listo. Los correos salen solos.</p>
+        <div id="hoyMensajes"></div>
+      </div>
+    </section>
+
     <section id="view-nueva" role="tabpanel" aria-labelledby="tab-nueva" hidden>
       <form id="form" class="card" novalidate>
         <div class="form-body">
@@ -76,6 +91,10 @@
         <h2 tabindex="-1">Cita guardada</h2>
         <p class="done-summary" id="doneSummary"></p>
         <p class="note" id="doneNote"></p>
+        <div class="done-confirm" id="doneConfirm" hidden>
+          <a class="btn btn-wa" id="doneWa" href="#" target="_blank" rel="noopener">Enviar confirmación por WhatsApp</a>
+          <p class="note" id="doneMail"></p>
+        </div>
         <div class="done-actions">
           <button type="button" class="btn btn-primary" id="again">Registrar otra cita</button>
           <button type="button" class="btn btn-ghost" id="toRegistros">Ver registros</button>

@@ -306,3 +306,36 @@ input:focus, textarea:focus { outline: none; border-color: var(--morado); box-sh
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Hoy ---------- */
+.sec-title {
+  font-family: var(--titulo); font-weight: 400; font-size: 18px; color: var(--tinta);
+  margin: 26px 0 4px; padding-top: 18px; border-top: 1px solid var(--line);
+}
+.reg-head + .sec-title { border-top: 0; padding-top: 0; margin-top: 18px; }
+.sec-note { margin: 0 0 4px; }
+.row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 10px; }
+.btn-sm { min-height: 44px; padding: 0 18px; font-size: 15px; }
+.btn-wa { background: var(--amarillo); border-color: var(--amarillo); color: var(--tinta); text-decoration: none; }
+.btn-wa:hover { background: #F5CF45; border-color: #F5CF45; }
+.hoy-row { grid-template-columns: 74px 1fr; }
+.hoy-row .when .d { margin-top: 2px; }
+.hoy-row.estado-entregada .name { color: var(--soft); }
+.tag.estado { background: var(--fondo); color: var(--morado); border: 1.5px solid var(--lila); }
+.estado-en_katana .tag.estado { background: var(--morado); color: var(--blanco); border-color: var(--morado); }
+.inline-form { margin-top: 12px; padding: 14px; background: var(--fondo); border-radius: 16px; }
+.inline-form label { display: block; font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+.inline-form .hint { margin: 0 0 8px; }
+.inline-form textarea { min-height: 72px; }
+.msg { grid-template-columns: 1fr; }
+.msg-type { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--morado); }
+.tipo-listo .msg-type { color: var(--naranja); }
+.msg-text {
+  margin: 10px 0 0; padding: 12px 14px; font-size: 15px; line-height: 1.45;
+  background: var(--fondo); border-radius: 4px 16px 16px 16px;
+}
+.done-confirm { margin-top: 18px; }
+.done-confirm .note { margin-top: 10px; }
+@media (max-width: 420px) {
+  .hoy-row { grid-template-columns: 64px 1fr; }
+}

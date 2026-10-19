@@ -141,3 +141,41 @@ create policy "Equipo elimina citas" on public.citas for delete to authenticated
 
 -- Las fichas no se pueden borrar desde la app (para no perder historial).
 -- Si alguna vez hace falta, se borran desde Table Editor en Supabase.
+
+-- ============================================================
+-- Avisos: registro de cada mensaje enviado (o que se decidió no enviar)
+-- Evita mandar dos veces el mismo mensaje por el mismo canal.
+--   tipo:  confirmacion · dia_antes · toca_volver · listo
+--   canal: whatsapp (lo envía el equipo con un toque) · correo (automático)
+-- ============================================================
+create table if not exists public.avisos (
+  id         uuid primary key default gen_random_uuid(),
+  creado     timestamptz not null default now(),
+  creado_por uuid default auth.uid() references auth.users (id) on delete set null,
+  tipo       text not null check (tipo in ('confirmacion', 'dia_antes', 'toca_volver', 'listo')),
+  canal      text not null check (canal in ('whatsapp', 'correo')),
+  omitido    boolean not null default false,   -- se decidió no enviarlo
+  cita_id    uuid references public.citas (id) on delete cascade,
+  ficha_id   uuid references public.fichas (id) on delete cascade,
+  ref_fecha  date,                             -- para "toca volver": fecha de la última visita
+  destino    text,                             -- número o correo al que se envió
+  check (cita_id is not null or ficha_id is not null)
+);
+
+create unique index if not exists avisos_cita_unico
+  on public.avisos (tipo, canal, cita_id) where cita_id is not null;
+create unique index if not exists avisos_volver_unico
+  on public.avisos (tipo, canal, ficha_id, ref_fecha) where tipo = 'toca_volver';
+create index if not exists avisos_ficha_idx      on public.avisos (ficha_id);
+create index if not exists avisos_creado_por_idx on public.avisos (creado_por);
+
+revoke all on public.avisos from anon, authenticated;
+grant select, insert on public.avisos to authenticated;
+alter table public.avisos enable row level security;
+
+drop policy if exists "Equipo ve avisos"   on public.avisos;
+drop policy if exists "Equipo crea avisos" on public.avisos;
+create policy "Equipo ve avisos" on public.avisos for select to authenticated
+  using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');
+create policy "Equipo crea avisos" on public.avisos for insert to authenticated
+  with check (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');

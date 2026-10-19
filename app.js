@@ -54,9 +54,7 @@
       title: 'Cliente de antes',
       fields: [
         { name: 'desde_cuando', label: "¿Desde cuándo viene a Katana's?", type: 'radio', req: true,
-          options: ['Menos de 1 año', 'De 1 a 3 años', 'De 3 a 5 años', 'Más de 5 años'] },
-        { name: 'frecuencia', label: '¿Cada cuánto trae al perro?', type: 'radio',
-          options: ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'] }
+          options: ['Menos de 1 año', 'De 1 a 3 años', 'De 3 a 5 años', 'Más de 5 años'] }
       ]
     },
     cliente: {
@@ -82,7 +80,10 @@
         { name: 'sexo', label: 'Sexo', type: 'radio', req: true, options: ['Macho', 'Hembra'] },
         { name: 'esterilizado', label: '¿Está esterilizado?', type: 'radio', options: ['Sí', 'No', 'No sabe'] },
         { name: 'cumple', label: 'Cumpleaños del perro', type: 'date',
-          hint: 'Si el cliente no sabe la fecha exacta, anota una aproximada.' }
+          hint: 'Si el cliente no sabe la fecha exacta, anota una aproximada.' },
+        { name: 'frecuencia', label: '¿Cada cuánto debería venir?', type: 'radio', req: true,
+          options: ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'],
+          hint: 'Con esto le recordamos al cliente cuando le toque volver.' }
       ]
     },
     salud: {
@@ -169,17 +170,22 @@
 
   let citas = [];
   let fichas = [];
+  let avisos = [];
   const findFicha = (wa, perro) => fichas.find(f => keyOf(f.whatsapp, f.perro) === keyOf(wa, perro));
 
   async function loadAll() {
-    const [f, c] = await Promise.all([
+    const desde = new Date(Date.now() - 180 * 864e5).toISOString();
+    const [f, c, a] = await Promise.all([
       sb.from('fichas').select('*').order('perro'),
-      sb.from('citas').select('*').order('fecha').order('hora')
+      sb.from('citas').select('*').order('fecha').order('hora'),
+      sb.from('avisos').select('*').gte('creado', desde)
     ]);
     if (f.error) throw f.error;
     if (c.error) throw c.error;
+    if (a.error) throw a.error;
     fichas = f.data;
     citas = c.data.map(x => ({ ...x, hora: hhmm(x.hora) }));
+    avisos = a.data;
     updateCount();
   }
 
@@ -483,7 +489,7 @@
         origen: TIPO_LABEL[tipo],
         como_conocio: tipo === 'nuevo' ? getVal('como_conocio') : null,
         desde_cuando: tipo === 'antes' ? getVal('desde_cuando') : null,
-        frecuencia: tipo === 'antes' ? (getVal('frecuencia') || null) : null,
+        frecuencia: getVal('frecuencia') || null,
         nombre: getVal('nombre'), whatsapp: fmtWa(getVal('whatsapp')), correo: getVal('correo') || null,
         colonia: getVal('colonia') || null, contacto: getVal('contacto'),
         perro: getVal('perro'), raza: getVal('raza'), tamano: getVal('tamano'), pelo: getVal('pelo'),
@@ -499,6 +505,7 @@
 
     updateCount();
     showDone(cita, note);
+    enviarCorreoConfirmacion(cita);
   }
 
   function showDone(c, note) {
@@ -506,6 +513,16 @@
     const done = $('#done');
     $('#doneSummary').textContent = `${c.perro} · ${fmtLong(c.fecha)}, ${c.hora}`;
     $('#doneNote').textContent = [asList(c.servicios).join(', '), note].filter(Boolean).join('. ');
+    const item = { tipo: 'confirmacion', cita: c, ficha: fichaDe(c) };
+    const wa = c.fecha >= today() && normWa(c.whatsapp).length === 8;
+    $('#doneConfirm').hidden = !wa;
+    if (wa) {
+      const a = $('#doneWa');
+      a.href = waLink(c.whatsapp, mensaje(item));
+      a.onclick = () => { registrarAviso(item, 'whatsapp', false); a.textContent = 'Confirmación enviada'; };
+      a.textContent = 'Enviar confirmación por WhatsApp';
+    }
+    $('#doneMail').textContent = '';
     done.hidden = false;
     window.scrollTo({ top: 0 });
     $('h2', done).focus({ preventScroll: true });
@@ -527,14 +544,15 @@
 
   // ---------- Pestañas ----------
   function switchTab(which) {
-    const reg = which === 'registros';
-    $('#tab-nueva').setAttribute('aria-selected', String(!reg));
-    $('#tab-registros').setAttribute('aria-selected', String(reg));
-    $('#view-nueva').hidden = reg;
-    $('#view-registros').hidden = !reg;
-    if (reg) refresh();
+    for (const t of ['hoy', 'nueva', 'registros']) {
+      $(`#tab-${t}`).setAttribute('aria-selected', String(t === which));
+      $(`#view-${t}`).hidden = t !== which;
+    }
+    if (which === 'registros') refresh();
+    if (which === 'hoy') refreshHoy();
     window.scrollTo({ top: 0 });
   }
+  $('#tab-hoy').addEventListener('click', () => switchTab('hoy'));
   $('#tab-nueva').addEventListener('click', () => switchTab('nueva'));
   $('#tab-registros').addEventListener('click', () => switchTab('registros'));
 
@@ -547,7 +565,12 @@
     renderList();
   }));
 
-  function updateCount() { $('#count').textContent = citas.length; }
+  function updateCount() {
+    $('#count').textContent = citas.length;
+    const n = pendientes().length;
+    $('#countHoy').textContent = n;
+    $('#countHoy').hidden = n === 0;
+  }
 
   async function refresh() {
     renderRegistros();
@@ -732,6 +755,227 @@
     }
   });
 
+  // ---------- Hoy: check-in, check-out y mensajes ----------
+  const FREC_DIAS = { 'Cada 2 semanas': 14, 'Cada mes': 30, 'Cada 2 meses': 60 };
+  const TIEMPO_TXT = { 14: 'pasaron dos semanas', 30: 'pasó un mes', 60: 'pasaron dos meses' };
+  const TIPO_AVISO = { listo: 'Listo para recoger', dia_antes: 'Cita de mañana', confirmacion: 'Confirmación de cita', toca_volver: 'Le toca volver' };
+  const ORDEN_AVISO = { listo: 0, dia_antes: 1, confirmacion: 2, toca_volver: 3 };
+
+  const addDays = (iso, n) => { const d = new Date(iso + 'T12:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const localDate = ts => { const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const hora12 = h => { const [H, M] = String(h || '').split(':').map(Number); if (isNaN(H)) return h || ''; return new Date(2000, 0, 1, H, M || 0).toLocaleTimeString('es-SV', { hour: 'numeric', minute: '2-digit' }); };
+  const horaDe = ts => ts ? new Date(ts).toLocaleTimeString('es-SV', { hour: 'numeric', minute: '2-digit' }) : '';
+  const primerNombre = n => String(n || '').trim().split(/\s+/)[0] || '';
+  const listaTxt = arr => { const l = asList(arr).map(x => x.toLowerCase()); return l.length < 2 ? (l[0] || '') : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1]; };
+  const waLink = (num, texto) => `https://wa.me/503${normWa(num)}?text=${encodeURIComponent(texto)}`;
+  const fichaDe = c => (c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : null) || findFicha(c.whatsapp, c.perro) || null;
+
+  function mensaje(item) {
+    const c = item.cita, f = item.ficha;
+    const nombre = primerNombre(c?.cliente || f?.nombre);
+    const hola = nombre ? `¡Hola, ${nombre}!` : '¡Hola!';
+    if (item.tipo === 'confirmacion') {
+      return `${hola} Te confirmamos la cita de ${c.perro} en Katana's Grooming: ${fmtLong(c.fecha)} a las ${hora12(c.hora)}, para ${listaTxt(c.servicios)}. Si necesitas cambiarla, escríbenos por aquí. ¡Nos vemos!`;
+    }
+    if (item.tipo === 'dia_antes') {
+      return `${hola} Te recordamos que mañana, ${fmtLong(c.fecha)}, a las ${hora12(c.hora)} esperamos a ${c.perro} en Katana's Grooming. Si no pueden venir, avísanos por aquí para darle el espacio a otro peludo.`;
+    }
+    if (item.tipo === 'listo') {
+      return `${hola} ${c.perro} ya está listo y te espera en Katana's Grooming.`;
+    }
+    return `${hola} Ya ${TIEMPO_TXT[item.dias] || 'pasó un tiempo'} desde la última visita de ${f.perro} a Katana's Grooming. ¿Le agendamos la próxima? Respóndenos con el día y la hora que te quedan mejor.`;
+  }
+
+  const avisoDe = (tipo, canal, item) => avisos.find(a => a.tipo === tipo && a.canal === canal && (
+    tipo === 'toca_volver' ? a.ficha_id === item.ficha.id && a.ref_fecha === item.ref : a.cita_id === item.cita.id));
+
+  function pendientes() {
+    const t = today(), manana = addDays(t, 1);
+    const out = [];
+    for (const c of citas) {
+      if (c.estado === 'cancelada' || normWa(c.whatsapp).length !== 8) continue;
+      const f = fichaDe(c);
+      const item = tipo => ({ tipo, cita: c, ficha: f });
+      if (c.estado === 'agendada' && c.fecha >= t && !avisoDe('confirmacion', 'whatsapp', { cita: c })) out.push(item('confirmacion'));
+      if (c.estado === 'agendada' && c.fecha === manana && localDate(c.creado) < t && f?.recordatorios !== false
+        && !avisoDe('dia_antes', 'whatsapp', { cita: c })) out.push(item('dia_antes'));
+      if (c.estado === 'entregada' && c.salida && localDate(c.salida) === t && !avisoDe('listo', 'whatsapp', { cita: c })) out.push(item('listo'));
+    }
+    for (const f of fichas) {
+      const dias = FREC_DIAS[f.frecuencia];
+      if (!dias || f.recordatorios !== true || normWa(f.whatsapp).length !== 8) continue;
+      const suyas = citas.filter(c => c.ficha_id === f.id && c.estado !== 'cancelada');
+      if (suyas.some(c => c.fecha > t || (c.fecha === t && c.estado !== 'entregada'))) continue;
+      const ult = suyas.map(c => c.fecha).filter(d => d <= t).sort().pop();
+      if (!ult || addDays(ult, dias) > t) continue;
+      const item = { tipo: 'toca_volver', ficha: f, ref: ult, dias };
+      if (!avisoDe('toca_volver', 'whatsapp', item)) out.push(item);
+    }
+    return out.sort((a, b) => ORDEN_AVISO[a.tipo] - ORDEN_AVISO[b.tipo]);
+  }
+
+  async function registrarAviso(item, canal, omitido) {
+    const row = {
+      tipo: item.tipo, canal, omitido,
+      cita_id: item.cita?.id || null,
+      ficha_id: item.ficha?.id || null,
+      ref_fecha: item.tipo === 'toca_volver' ? item.ref : null,
+      destino: canal === 'whatsapp' ? fmtWa(item.cita?.whatsapp || item.ficha?.whatsapp) : null
+    };
+    const local = { ...row, creado: new Date().toISOString() };
+    avisos.push(local);
+    updateCount();
+    const { data, error } = await sb.from('avisos').insert(row).select().single();
+    if (error && error.code !== '23505') {
+      avisos = avisos.filter(a => a !== local);
+      toast('No se pudo marcar el mensaje como enviado. Revisa tu conexión.');
+    } else if (data) {
+      avisos[avisos.indexOf(local)] = data;
+    }
+    updateCount();
+    if (!$('#view-hoy').hidden) renderHoy();
+  }
+
+  async function enviarCorreoConfirmacion(cita) {
+    const f = fichaDe(cita);
+    if (!f?.correo || cita.fecha < today()) return;
+    const p = $('#doneMail');
+    try {
+      const { data, error } = await sb.functions.invoke('avisos-correo', { body: { modo: 'confirmacion', cita_id: cita.id } });
+      if (error) throw error;
+      if (data?.enviados > 0) {
+        p.textContent = `También le enviamos la confirmación a ${f.correo}.`;
+        avisos.push({ tipo: 'confirmacion', canal: 'correo', cita_id: cita.id, creado: new Date().toISOString() });
+      }
+    } catch (err) {
+      console.error(err);
+      p.textContent = 'El correo de confirmación no salió ahora; se intentará de nuevo mañana a las 8:00 a. m.';
+    }
+  }
+
+  let abierto = null;   // { id, act } del formulario de llegada/entrega abierto
+
+  async function refreshHoy() {
+    renderHoy();
+    try { await loadAll(); renderHoy(); } catch (err) {
+      console.error(err);
+      toast(isAuthError(err) ? 'Tu sesión se cerró. Vuelve a iniciar sesión.' : 'No se pudieron cargar las citas de hoy. Revisa tu conexión.');
+    }
+  }
+
+  function hoyRow(c) {
+    const f = fichaDe(c);
+    const alerts = alertsFor(f);
+    const est = { agendada: 'Por llegar', en_katana: "En Katana's", entregada: 'Entregado' }[c.estado] || ESTADO_LABEL[c.estado];
+    let acciones = '';
+    if (abierto?.id === c.id) {
+      const llegada = abierto.act === 'recibir';
+      acciones = `<div class="inline-form">
+        <label for="nota-${esc(c.id)}">${llegada ? '¿Cómo llegó y qué dejó?' : '¿Qué se le hizo? ¿Algo que contarle al dueño?'} <span class="opt">opcional</span></label>
+        <p class="hint">${llegada ? 'Nudos, heridas, pulgas o garrapatas; collar, correa o juguete.' : 'Por ejemplo: se le encontró una herida, se portó muy bien.'}</p>
+        <textarea id="nota-${esc(c.id)}" rows="2"></textarea>
+        <div class="row-actions">
+          <button type="button" class="btn btn-primary btn-sm" data-act="${llegada ? 'ok-recibir' : 'ok-entregar'}" data-id="${esc(c.id)}">${llegada ? 'Confirmar llegada' : 'Confirmar entrega'}</button>
+          <button type="button" class="link-btn" data-act="cerrar" data-id="${esc(c.id)}">Cancelar</button>
+        </div></div>`;
+    } else if (c.estado === 'agendada') {
+      acciones = `<div class="row-actions">
+        <button type="button" class="btn btn-primary btn-sm" data-act="recibir" data-id="${esc(c.id)}">Recibir</button>
+        <button type="button" class="link-btn" data-act="novino" data-id="${esc(c.id)}">No vino</button></div>`;
+    } else if (c.estado === 'en_katana') {
+      acciones = `<div class="row-actions"><button type="button" class="btn btn-primary btn-sm" data-act="entregar" data-id="${esc(c.id)}">Entregar</button></div>`;
+    }
+    const notas = [
+      c.llegada ? `Llegó a las ${horaDe(c.llegada)}${c.nota_llegada ? ': ' + c.nota_llegada : ''}` : '',
+      c.salida ? `Entregado a las ${horaDe(c.salida)}${c.nota_salida ? ': ' + c.nota_salida : ''}` : ''
+    ].filter(Boolean).map(t => `<p class="meta">${esc(t)}</p>`).join('');
+    return `<li class="row hoy-row estado-${esc(c.estado)}">
+      <div class="when"><span class="h">${esc(hora12(c.hora))}</span>${c.fecha !== today() ? `<span class="d">${esc(fmtDay(c.fecha))}</span>` : ''}</div>
+      <div>
+        <p class="name">${esc(c.perro)}</p>
+        <p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
+        <ul class="tags"><li class="tag estado">${esc(est)}</li>${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>
+        ${notas}${acciones}
+      </div>
+    </li>`;
+  }
+
+  function renderHoy() {
+    if (!$('#hoyFecha')) return;
+    const t = today();
+    $('#hoyFecha').textContent = fmtLong(t);
+    const deHoy = citas.filter(c => c.estado !== 'cancelada' && (c.fecha === t || c.estado === 'en_katana'))
+      .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
+    $('#hoyCitas').innerHTML = deHoy.length
+      ? `<ul class="rows">${deHoy.map(hoyRow).join('')}</ul>`
+      : `<div class="empty"><p>No hay citas para hoy.</p></div>`;
+
+    const items = pendientes();
+    window.__katanaPendientes = items;
+    $('#hoyMensajes').innerHTML = items.length
+      ? `<ul class="rows">${items.map((it, i) => {
+          const c = it.cita, f = it.ficha;
+          const perro = c?.perro || f?.perro;
+          const cliente = c?.cliente || f?.nombre || 'Cliente sin ficha';
+          const num = c?.whatsapp || f?.whatsapp;
+          const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}`
+            : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
+          const correo = avisoDe(it.tipo, 'correo', it) ? '<p class="note">El correo ya salió.</p>' : '';
+          return `<li class="row msg tipo-${it.tipo}"><div>
+            <p class="msg-type">${esc(TIPO_AVISO[it.tipo])}</p>
+            <p class="name">${esc(perro)}</p>
+            <p class="meta">${esc(cliente)} · ${esc(fmtWa(num))} · ${esc(extra)}</p>
+            <p class="msg-text">${esc(mensaje(it))}</p>
+            ${correo}
+            <div class="row-actions">
+              <a class="btn btn-wa btn-sm" href="${esc(waLink(num, mensaje(it)))}" target="_blank" rel="noopener" data-send="${i}">Enviar por WhatsApp</a>
+              <button type="button" class="link-btn" data-skip="${i}">No enviar</button>
+            </div></div></li>`;
+        }).join('')}</ul>`
+      : `<div class="empty"><p>No hay mensajes pendientes. Aquí aparecen las confirmaciones, los avisos de la víspera, los perros que ya deben volver y los que están listos para recoger.</p></div>`;
+    if (abierto) $(`#nota-${CSS.escape(abierto.id)}`)?.focus();
+  }
+
+  async function actualizarCita(id, cambios, ok) {
+    const c = citas.find(x => x.id === id);
+    const { data, error } = await sb.from('citas').update(cambios).eq('id', id).select().single();
+    if (error) { toast('No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.'); return false; }
+    Object.assign(c, data, { hora: hhmm(data.hora) });
+    abierto = null;
+    updateCount();
+    renderHoy();
+    if (ok) toast(ok);
+    return true;
+  }
+
+  $('#hoyCitas').addEventListener('click', async e => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const id = b.dataset.id, act = b.dataset.act;
+    const c = citas.find(x => x.id === id);
+    if (!c) return;
+    if (act === 'recibir' || act === 'entregar') { abierto = { id, act }; renderHoy(); return; }
+    if (act === 'cerrar') { abierto = null; renderHoy(); return; }
+    if (act === 'novino') {
+      if (!confirm(`¿Marcar que ${c.perro} no vino a su cita de las ${hora12(c.hora)}?`)) return;
+      await actualizarCita(id, { estado: 'cancelada' }, `${c.perro}: marcada como que no vino`);
+      return;
+    }
+    const nota = ($(`#nota-${CSS.escape(id)}`)?.value || '').trim() || null;
+    b.disabled = true;
+    if (act === 'ok-recibir') await actualizarCita(id, { estado: 'en_katana', llegada: new Date().toISOString(), nota_llegada: nota }, `${c.perro} llegó`);
+    if (act === 'ok-entregar') await actualizarCita(id, { estado: 'entregada', salida: new Date().toISOString(), nota_salida: nota }, `${c.perro} entregado. Avísale al dueño en "Mensajes por enviar".`);
+    b.disabled = false;
+  });
+
+  $('#hoyMensajes').addEventListener('click', e => {
+    const send = e.target.closest('[data-send]');
+    const skip = e.target.closest('[data-skip]');
+    const items = window.__katanaPendientes || [];
+    if (send) { const it = items[Number(send.dataset.send)]; if (it) setTimeout(() => registrarAviso(it, 'whatsapp', false), 300); }
+    if (skip) { const it = items[Number(skip.dataset.skip)]; if (it) registrarAviso(it, 'whatsapp', true); }
+  });
+
   // ---------- Sesión ----------
   function isAuthError(err) {
     const s = String(err?.code || '') + ' ' + String(err?.message || '');
@@ -744,8 +988,8 @@
     $('#view-login').hidden = logged;
     $('#tabs').hidden = !logged;
     $('#logout').hidden = !logged;
-    if (logged) switchTab('nueva');
-    else { $('#view-nueva').hidden = true; $('#view-registros').hidden = true; }
+    if (logged) switchTab('hoy');
+    else { $('#view-hoy').hidden = true; $('#view-nueva').hidden = true; $('#view-registros').hidden = true; }
   }
 
   function loginError(msg) {
@@ -791,7 +1035,7 @@
     started = true;
     showView('app');
     resetForm();
-    try { await loadAll(); } catch (err) {
+    try { await loadAll(); renderHoy(); } catch (err) {
       console.error(err);
       toast('No se pudieron cargar las fichas. Revisa tu conexión.');
     }
