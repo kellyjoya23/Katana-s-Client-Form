@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#FBFCFB">
+  <meta name="robots" content="noindex">
+  <title>Registro de citas · Katana Grooming</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%239A6238'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400;500;600;700&family=Shantell+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand" aria-label="Katana Grooming">
+        <span class="logo">katana<span class="dot">●</span></span>
+        <span class="sub">GROOMING</span>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Secciones">
+        <button class="tab" role="tab" id="tab-nueva" aria-controls="view-nueva" aria-selected="true">Nueva cita</button>
+        <button class="tab" role="tab" id="tab-registros" aria-controls="view-registros" aria-selected="false">Registros <span class="count" id="count">0</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="view-nueva" role="tabpanel" aria-labelledby="tab-nueva">
+      <form id="form" class="card has-dog" novalidate>
+        <div class="dog-slot"></div>
+        <div class="form-body">
+          <div class="progress">
+            <ol id="dots" aria-hidden="true"></ol>
+            <p class="step-label" id="stepLabel"></p>
+          </div>
+          <div id="steps"></div>
+        </div>
+        <div class="nav">
+          <button type="button" class="btn btn-ghost" id="back">Atrás</button>
+          <button type="submit" class="btn btn-primary" id="next">Siguiente</button>
+        </div>
+      </form>
+
+      <div id="done" class="card has-dog done" hidden>
+        <div class="dog-slot"></div>
+        <h2 tabindex="-1">Cita registrada<span class="dot">●</span></h2>
+        <p class="done-summary" id="doneSummary"></p>
+        <p class="note" id="doneNote"></p>
+        <div class="done-actions">
+          <button type="button" class="btn btn-primary" id="again">Registrar otra cita</button>
+          <button type="button" class="btn btn-ghost" id="toRegistros">Ver registros</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-registros" role="tabpanel" aria-labelledby="tab-registros" hidden>
+      <div class="card reg">
+        <div class="reg-head">
+          <h2>Registros</h2>
+          <p class="reg-stats" id="regStats"></p>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="export">Descargar Excel</button>
+          <label class="btn btn-ghost file-btn">
+            Cargar Excel
+            <input type="file" id="import" accept=".xlsx">
+          </label>
+        </div>
+        <p class="note" id="storageNote"></p>
+
+        <div class="seg" role="tablist" aria-label="Tipo de registro">
+          <button class="seg-btn" role="tab" data-list="citas" aria-selected="true">Citas</button>
+          <button class="seg-btn" role="tab" data-list="fichas" aria-selected="false">Fichas</button>
+        </div>
+        <div id="list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
