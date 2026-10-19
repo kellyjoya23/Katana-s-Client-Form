@@ -245,6 +245,44 @@ input:focus, textarea:focus { outline: none; border-color: var(--morado); box-sh
 .empty { text-align: center; padding: 28px 8px 12px; }
 .empty p { margin: 0 0 14px; color: var(--soft); }
 
+/* ---------- Sesión ---------- */
+.loading { text-align: center; color: var(--soft); padding: 48px 0; }
+.login { max-width: 420px; margin: 24px auto 0; padding: 28px 24px 26px; }
+.login h2 {
+  font-family: var(--titulo); font-weight: 400; color: var(--morado);
+  font-size: clamp(24px, 5.6vw, 30px); line-height: 1.15; margin: 0 0 16px;
+}
+.login .intro { margin: -6px 0 22px; }
+.login input[type="password"] {
+  width: 100%; min-height: 48px; padding: 12px 14px;
+  font: inherit; font-size: 16px; color: var(--tinta);
+  background: #fff; border: 1.5px solid var(--edge); border-radius: 14px;
+}
+.login input[type="password"]:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px var(--lila); }
+.login .err { margin: -8px 0 16px; }
+.btn-block { width: 100%; }
+.btn:disabled { opacity: .6; cursor: progress; }
+
+.logout {
+  margin-left: auto; min-height: 40px; padding: 0 12px; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--blanco);
+  background: none; border: 0; text-decoration: underline; text-underline-offset: 3px;
+}
+.logout:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; border-radius: 8px; }
+.top-inner { flex-wrap: wrap; }
+.tabs { order: 3; }
+@media (min-width: 560px) {
+  .top-inner { flex-wrap: nowrap; }
+  .tabs { order: 0; }
+  .logout { order: 4; margin-left: 0; }
+}
+
+.migrate {
+  margin-top: 18px; padding: 14px 16px;
+  background: var(--fondo); border-left: 4px solid var(--amarillo); border-radius: 12px;
+}
+.migrate p { margin: 0 0 12px; font-weight: 600; }
+
 /* ---------- Aviso ---------- */
 .toast {
   position: fixed; left: 50%; bottom: 24px; z-index: 20;

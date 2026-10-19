@@ -1,5 +1,5 @@
 /* Katana's Grooming · Registro de citas
- * Los registros se guardan en el navegador (localStorage) y se descargan como Excel.
+ * Guarda citas y fichas en Supabase. Solo el equipo con sesión iniciada ve los datos.
  */
 (() => {
   'use strict';
@@ -13,6 +13,7 @@
     { v: 'antes', l: 'Cliente de antes, sin ficha' }
   ];
   const TIPO_LABEL = { ficha: 'Con ficha', nuevo: 'Cliente nuevo', antes: 'Cliente de antes' };
+  const ESTADO_LABEL = { agendada: 'Agendada', en_katana: "En Katana's", entregada: 'Entregada', cancelada: 'Cancelada' };
   const TRANQUILO = 'Es tranquilo';
 
   // ---------- Pasos ----------
@@ -45,14 +46,14 @@
     nuevo: {
       title: 'Cliente nuevo',
       fields: [
-        { name: 'comoConocio', label: "¿Cómo conoció Katana's?", type: 'radio', other: true, req: true,
+        { name: 'como_conocio', label: "¿Cómo conoció Katana's?", type: 'radio', other: true, req: true,
           options: ['Instagram', 'TikTok', 'Facebook', 'Google', 'Se lo recomendó alguien', 'Pasó por el local'] }
       ]
     },
     antes: {
       title: 'Cliente de antes',
       fields: [
-        { name: 'desdeCuando', label: "¿Desde cuándo viene a Katana's?", type: 'radio', req: true,
+        { name: 'desde_cuando', label: "¿Desde cuándo viene a Katana's?", type: 'radio', req: true,
           options: ['Menos de 1 año', 'De 1 a 3 años', 'De 3 a 5 años', 'Más de 5 años'] },
         { name: 'frecuencia', label: '¿Cada cuánto trae al perro?', type: 'radio',
           options: ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'] }
@@ -109,24 +110,26 @@
   };
   const FICHA_STEPS = ['cliente', 'perro', 'salud', 'permisos'];
 
-  // ---------- Columnas del Excel ----------
+  // ---------- Columnas del Excel (clave en la base → título) ----------
   const CITA_COLS = [
-    ['id', 'ID'], ['creado', 'Registrada el'], ['fecha', 'Fecha de la cita'], ['hora', 'Hora'],
+    ['creado', 'Registrada el'], ['fecha', 'Fecha de la cita'], ['hora', 'Hora'],
     ['perro', 'Perro'], ['cliente', 'Cliente'], ['whatsapp', 'WhatsApp'], ['servicios', 'Servicios'],
-    ['canal', 'Agendó por'], ['tipo', 'Tipo de cliente'], ['novedades', 'Novedades']
+    ['canal', 'Agendó por'], ['tipo', 'Tipo de cliente'], ['estado', 'Estado'],
+    ['llegada', 'Llegada'], ['salida', 'Salida'], ['novedades', 'Novedades']
   ];
   const FICHA_COLS = [
-    ['id', 'ID'], ['creada', 'Creada el'], ['actualizada', 'Actualizada el'], ['origen', 'Origen'],
+    ['creada', 'Creada el'], ['actualizada', 'Actualizada el'], ['origen', 'Origen'],
     ['perro', 'Perro'], ['raza', 'Raza'], ['tamano', 'Tamaño'], ['pelo', 'Tipo de pelo'], ['sexo', 'Sexo'],
     ['esterilizado', 'Esterilizado'], ['cumple', 'Cumpleaños'], ['vacunas', 'Vacunas al día'],
     ['alergias', 'Alergias, piel o medicamentos'], ['caracter', 'Carácter en grooming'], ['notas', 'Notas del cliente'],
     ['novedades', 'Novedades'], ['nombre', 'Cliente'], ['whatsapp', 'WhatsApp'], ['correo', 'Correo'],
-    ['colonia', 'Municipio o colonia'], ['contacto', 'Contacto preferido'], ['comoConocio', "Cómo conoció Katana's"],
-    ['desdeCuando', 'Cliente desde'], ['frecuencia', 'Frecuencia'], ['autoriza', 'Autoriza uso de datos'],
+    ['colonia', 'Municipio o colonia'], ['contacto', 'Contacto preferido'], ['como_conocio', "Cómo conoció Katana's"],
+    ['desde_cuando', 'Cliente desde'], ['frecuencia', 'Frecuencia'], ['autoriza', 'Autoriza uso de datos'],
     ['fotos', 'Fotos en redes'], ['recordatorios', 'Recordatorios por WhatsApp']
   ];
   const LIST_KEYS = ['servicios', 'caracter'];
-  const STAMP_KEYS = ['creado', 'creada', 'actualizada'];
+  const STAMP_KEYS = ['creado', 'creada', 'actualizada', 'llegada', 'salida'];
+  const BOOL_KEYS = ['autoriza', 'fotos', 'recordatorios'];
 
   // ---------- Utilidades ----------
   const $ = (s, r = document) => r.querySelector(s);
@@ -134,12 +137,13 @@
   const TEL = /^(\+?503[ -]?)?[267]\d{3}[ -]?\d{4}$/;
   const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const normWa = s => String(s || '').replace(/\D/g, '').slice(-8);
-  const norm = s => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const fmtWa = s => { const d = normWa(s); return d.length === 8 ? d.slice(0, 4) + '-' + d.slice(4) : String(s || '').trim(); };
+  const norm = s => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const keyOf = (wa, perro) => normWa(wa) + '|' + norm(perro);
   const asList = v => Array.isArray(v) ? v : String(v || '').split(',').map(s => s.trim()).filter(Boolean);
+  const siNo = v => v === true ? 'Sí' : v === false ? 'No' : '';
+  const toBool = v => v === 'Sí' ? true : v === 'No' ? false : null;
   const pad = n => String(n).padStart(2, '0');
   const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
   const stamp = iso => {
@@ -155,22 +159,63 @@
     const d = new Date(iso + 'T12:00');
     return isNaN(d) ? (iso || '') : d.toLocaleDateString('es-SV', { weekday: 'long', day: 'numeric', month: 'long' });
   };
+  const hhmm = t => String(t || '').slice(0, 5);
+  const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 
-  // ---------- Almacenamiento ----------
-  const KEYS = { citas: 'katana.citas.v1', fichas: 'katana.fichas.v1', export: 'katana.ultimoExcel' };
-  const load = k => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } };
-  let citas = load(KEYS.citas);
-  let fichas = load(KEYS.fichas);
-  let storageOk = true;
-  const persist = () => {
-    try {
-      localStorage.setItem(KEYS.citas, JSON.stringify(citas));
-      localStorage.setItem(KEYS.fichas, JSON.stringify(fichas));
-      storageOk = true;
-    } catch { storageOk = false; }
-  };
-  const lastExport = () => { try { return localStorage.getItem(KEYS.export); } catch { return null; } };
+  // ---------- Supabase ----------
+  const cfg = window.KATANA_CONFIG || {};
+  const configured = cfg.supabaseUrl && !cfg.supabaseUrl.includes('TU-PROYECTO') && cfg.supabaseAnonKey && !cfg.supabaseAnonKey.includes('PEGA-AQUI');
+  const sb = configured && window.supabase ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
+
+  let citas = [];
+  let fichas = [];
   const findFicha = (wa, perro) => fichas.find(f => keyOf(f.whatsapp, f.perro) === keyOf(wa, perro));
+
+  async function loadAll() {
+    const [f, c] = await Promise.all([
+      sb.from('fichas').select('*').order('perro'),
+      sb.from('citas').select('*').order('fecha').order('hora')
+    ]);
+    if (f.error) throw f.error;
+    if (c.error) throw c.error;
+    fichas = f.data;
+    citas = c.data.map(x => ({ ...x, hora: hhmm(x.hora) }));
+    updateCount();
+  }
+
+  async function upsertFicha(data) {
+    const ex = findFicha(data.whatsapp, data.perro);
+    if (ex) {
+      // Solo se actualiza lo que se llenó; se conservan el nombre, el origen y lo que ya estaba
+      const patch = {};
+      for (const [k, v] of Object.entries(data)) {
+        if (['perro', 'origen', 'creada'].includes(k)) continue;
+        if (v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
+        patch[k] = v;
+      }
+      const { data: row, error } = await sb.from('fichas').update(patch).eq('id', ex.id).select().single();
+      if (error) throw error;
+      Object.assign(ex, row);
+      return { row: ex, existed: true };
+    }
+    const { data: row, error } = await sb.from('fichas').insert(data).select().single();
+    if (error && error.code === '23505') {
+      // Alguien la creó desde otro dispositivo: recargamos y actualizamos
+      await loadAll();
+      return upsertFicha(data);
+    }
+    if (error) throw error;
+    fichas.push(row);
+    return { row, existed: false };
+  }
+
+  async function insertCita(cita) {
+    const { data: row, error } = await sb.from('citas').insert(cita).select().single();
+    if (error) throw error;
+    row.hora = hhmm(row.hora);
+    citas.push(row);
+    return row;
+  }
 
   // ---------- Render de campos ----------
   const normOpt = o => typeof o === 'string' ? { v: o, l: o } : o;
@@ -215,8 +260,7 @@
   const allFields = id => [...STEPS[id].fields, ...(STEPS[id].tail || [])];
 
   function renderSteps() {
-    const wrap = $('#steps');
-    wrap.innerHTML = Object.entries(STEPS).map(([id, s]) => `
+    $('#steps').innerHTML = Object.entries(STEPS).map(([id, s]) => `
       <section class="step" data-step="${id}" hidden>
         <h2 tabindex="-1">${s.title}</h2>
         ${s.intro ? `<p class="intro">${s.intro}</p>` : ''}
@@ -310,6 +354,7 @@
     $('#back').hidden = idx === 0;
     const last = idx === p.length - 1 && !!getVal('tipo');
     $('#next').textContent = last ? 'Guardar cita' : 'Siguiente';
+    $('#saveErr').hidden = true;
     if (id === 'buscar') updateMatch();
     if (focus) {
       form.scrollIntoView({ block: 'start', behavior: 'auto' });
@@ -317,12 +362,34 @@
     }
   }
 
-  form.addEventListener('submit', e => {
+  let saving = false;
+  form.addEventListener('submit', async e => {
     e.preventDefault();
+    if (saving) return;
     const p = path();
     if (!validateStep(p[idx])) return;
-    if (idx === p.length - 1) save();
-    else { idx++; show(true); }
+    if (idx < p.length - 1) { idx++; show(true); return; }
+
+    saving = true;
+    const btn = $('#next');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+    $('#saveErr').hidden = true;
+    try {
+      await save();
+    } catch (err) {
+      console.error(err);
+      const box = $('#saveErr');
+      box.textContent = isAuthError(err)
+        ? 'Tu sesión se cerró. Vuelve a iniciar sesión; lo que llenaste sigue aquí.'
+        : 'No se pudo guardar la cita. Revisa tu conexión a internet y vuelve a tocar "Guardar cita".';
+      box.hidden = false;
+      box.scrollIntoView({ block: 'center' });
+    } finally {
+      saving = false;
+      btn.disabled = false;
+      if (!form.hidden) btn.textContent = 'Guardar cita';
+    }
   });
 
   $('#back').addEventListener('click', () => { if (idx > 0) { idx--; show(true); } });
@@ -378,21 +445,21 @@
         ${alerts.length ? `<ul class="tags">${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>` : ''}
       </div>`;
     } else if (wa.length === 8 && perro) {
-      box.innerHTML = `<p class="match-miss">No encontramos a ${esc(perro)} con ese número en este dispositivo. Si nunca se registró aquí, vuelve atrás y elige "Cliente de antes, sin ficha".</p>`;
+      box.innerHTML = `<p class="match-miss">No encontramos a ${esc(perro)} con ese número. Si nunca se registró, vuelve atrás y elige "Cliente de antes, sin ficha".</p>`;
     } else {
       box.innerHTML = '';
     }
   }
 
   // ---------- Guardar ----------
-  function save() {
+  async function save() {
     const tipo = getVal('tipo');
-    const now = new Date().toISOString();
     const base = {
-      id: uid(), creado: now, fecha: getVal('fecha'), hora: getVal('hora'),
+      fecha: getVal('fecha'), hora: getVal('hora'),
       servicios: getVal('servicios'), canal: getVal('canal'), tipo
     };
-    let cita, note = '';
+    let note = '';
+    let cita;
 
     if (tipo === 'ficha') {
       const wa = fmtWa(getVal('wa_b'));
@@ -400,48 +467,45 @@
       const nov = getVal('novedades');
       const f = findFicha(wa, perro);
       if (f && nov) {
-        f.novedades = [f.novedades, `${base.fecha}: ${nov}`].filter(Boolean).join('\n');
-        f.actualizada = now;
+        const novedades = [f.novedades, `${base.fecha}: ${nov}`].filter(Boolean).join('\n');
+        const { data: row, error } = await sb.from('fichas').update({ novedades }).eq('id', f.id).select().single();
+        if (error) throw error;
+        Object.assign(f, row);
         note = 'Las novedades quedaron anotadas en su ficha.';
       }
-      if (!f) note = 'Este perro no tiene ficha en este dispositivo. La cita quedó guardada igual.';
-      cita = { ...base, whatsapp: wa, perro: f ? f.perro : perro, cliente: f ? f.nombre : '', novedades: nov };
+      if (!f) note = 'Este perro no tiene ficha. La cita quedó guardada igual.';
+      cita = await insertCita({
+        ...base, ficha_id: f ? f.id : null, whatsapp: wa,
+        perro: f ? f.perro : perro, cliente: f ? f.nombre : null, novedades: nov || null
+      });
     } else {
       const data = {
         origen: TIPO_LABEL[tipo],
-        comoConocio: tipo === 'nuevo' ? getVal('comoConocio') : '',
-        desdeCuando: tipo === 'antes' ? getVal('desdeCuando') : '',
-        frecuencia: tipo === 'antes' ? getVal('frecuencia') : '',
-        nombre: getVal('nombre'), whatsapp: fmtWa(getVal('whatsapp')), correo: getVal('correo'),
-        colonia: getVal('colonia'), contacto: getVal('contacto'),
+        como_conocio: tipo === 'nuevo' ? getVal('como_conocio') : null,
+        desde_cuando: tipo === 'antes' ? getVal('desde_cuando') : null,
+        frecuencia: tipo === 'antes' ? (getVal('frecuencia') || null) : null,
+        nombre: getVal('nombre'), whatsapp: fmtWa(getVal('whatsapp')), correo: getVal('correo') || null,
+        colonia: getVal('colonia') || null, contacto: getVal('contacto'),
         perro: getVal('perro'), raza: getVal('raza'), tamano: getVal('tamano'), pelo: getVal('pelo'),
-        sexo: getVal('sexo'), esterilizado: getVal('esterilizado'), cumple: getVal('cumple'),
-        vacunas: getVal('vacunas'), alergias: getVal('alergias'), caracter: getVal('caracter'), notas: getVal('notas'),
-        autoriza: getVal('autoriza').length ? 'Sí' : 'No', fotos: getVal('fotos'), recordatorios: getVal('recordatorios')
+        sexo: getVal('sexo'), esterilizado: getVal('esterilizado') || null, cumple: getVal('cumple') || null,
+        vacunas: getVal('vacunas'), alergias: getVal('alergias') || null, caracter: getVal('caracter'),
+        notas: getVal('notas') || null,
+        autoriza: getVal('autoriza').length > 0, fotos: toBool(getVal('fotos')), recordatorios: toBool(getVal('recordatorios'))
       };
-      const ex = findFicha(data.whatsapp, data.perro);
-      if (ex) {
-        Object.assign(ex, data, { actualizada: now });
-        note = `${data.perro} ya tenía ficha con ese número: la actualizamos.`;
-      } else {
-        fichas.push({ id: uid(), creada: now, actualizada: now, novedades: '', ...data });
-        note = `Ficha de ${data.perro} creada.`;
-      }
-      cita = { ...base, whatsapp: data.whatsapp, perro: data.perro, cliente: data.nombre, novedades: '' };
+      const { row, existed } = await upsertFicha(data);
+      note = existed ? `${row.perro} ya tenía ficha con ese número: la actualizamos.` : `Ficha de ${row.perro} creada.`;
+      cita = await insertCita({ ...base, ficha_id: row.id, whatsapp: row.whatsapp, perro: row.perro, cliente: row.nombre });
     }
 
-    citas.push(cita);
-    persist();
-    if (!storageOk) note = 'No pudimos guardar en este navegador. Descarga el Excel ahora para no perder la cita.';
-    showDone(cita, note);
     updateCount();
+    showDone(cita, note);
   }
 
   function showDone(c, note) {
     form.hidden = true;
     const done = $('#done');
     $('#doneSummary').textContent = `${c.perro} · ${fmtLong(c.fecha)}, ${c.hora}`;
-    $('#doneNote').textContent = [c.servicios.join(', '), note].filter(Boolean).join('. ');
+    $('#doneNote').textContent = [asList(c.servicios).join(', '), note].filter(Boolean).join('. ');
     done.hidden = false;
     window.scrollTo({ top: 0 });
     $('h2', done).focus({ preventScroll: true });
@@ -468,7 +532,7 @@
     $('#tab-registros').setAttribute('aria-selected', String(reg));
     $('#view-nueva').hidden = reg;
     $('#view-registros').hidden = !reg;
-    if (reg) renderRegistros();
+    if (reg) refresh();
     window.scrollTo({ top: 0 });
   }
   $('#tab-nueva').addEventListener('click', () => switchTab('nueva'));
@@ -485,24 +549,34 @@
 
   function updateCount() { $('#count').textContent = citas.length; }
 
+  async function refresh() {
+    renderRegistros();
+    try {
+      await loadAll();
+      renderRegistros();
+    } catch (err) {
+      console.error(err);
+      toast(isAuthError(err) ? 'Tu sesión se cerró. Vuelve a iniciar sesión.' : 'No se pudieron cargar los registros. Revisa tu conexión y toca "Actualizar".');
+    }
+  }
+  $('#refresh').addEventListener('click', refresh);
+
   function renderRegistros() {
-    const nc = citas.length, nf = fichas.length;
-    $('#regStats').textContent = `${nc} ${nc === 1 ? 'cita' : 'citas'} · ${nf} ${nf === 1 ? 'ficha' : 'fichas'}`;
-    const last = lastExport();
-    $('#storageNote').textContent = 'Los registros se guardan en este navegador. Descarga el Excel al cerrar el día para tener tu copia. '
-      + (last ? `Última descarga: ${stamp(last)}.` : 'Todavía no has descargado el Excel.');
+    $('#regStats').textContent = `${plural(citas.length, 'cita', 'citas')} · ${plural(fichas.length, 'ficha', 'fichas')}`;
+    renderMigrate();
     renderList();
   }
 
   function citaRow(c) {
-    const f = findFicha(c.whatsapp, c.perro);
+    const f = c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : findFicha(c.whatsapp, c.perro);
     const alerts = alertsFor(f).filter(a => !a.startsWith('Alergias'));
+    const estado = c.estado && c.estado !== 'agendada' ? `<li class="tag">${esc(ESTADO_LABEL[c.estado] || c.estado)}</li>` : '';
     return `<li class="row">
       <div class="when"><span class="d">${esc(fmtDay(c.fecha))}</span><span class="h">${esc(c.hora)}</span></div>
       <div>
         <p class="name">${esc(c.perro)}</p>
         <p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
-        <ul class="tags"><li class="tag">${esc(TIPO_LABEL[c.tipo] || c.tipo)}</li>${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>
+        <ul class="tags"><li class="tag">${esc(TIPO_LABEL[c.tipo] || c.tipo)}</li>${estado}${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>
       </div>
       <button type="button" class="link-btn" data-del="${esc(c.id)}" aria-label="Eliminar la cita de ${esc(c.perro)}">Eliminar</button>
     </li>`;
@@ -531,27 +605,28 @@
     }
     const sorted = [...fichas].sort((a, b) => norm(a.perro).localeCompare(norm(b.perro)));
     box.innerHTML = `<ul class="rows">${sorted.map(f => {
-      const visitas = citas.filter(c => keyOf(c.whatsapp, c.perro) === keyOf(f.whatsapp, f.perro));
+      const visitas = citas.filter(c => c.ficha_id === f.id);
       const ultima = visitas.map(c => c.fecha).sort().pop();
       const alerts = alertsFor(f);
       return `<li class="row ficha"><div>
         <p class="name">${esc(f.perro)}</p>
         <p class="meta">${esc([f.raza, f.tamano].filter(Boolean).join(' · '))}</p>
         <p class="meta">${esc(f.nombre)} · ${esc(f.whatsapp)}</p>
-        <p class="meta">${visitas.length} ${visitas.length === 1 ? 'cita' : 'citas'}${ultima ? ` · última: ${esc(fmtDay(ultima))}` : ''}</p>
+        <p class="meta">${plural(visitas.length, 'cita', 'citas')}${ultima ? ` · última: ${esc(fmtDay(ultima))}` : ''}</p>
         ${alerts.length ? `<ul class="tags">${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>` : ''}
       </div></li>`;
     }).join('')}</ul>`;
   }
 
-  $('#list').addEventListener('click', e => {
+  $('#list').addEventListener('click', async e => {
     const id = e.target.closest('[data-del]')?.dataset.del;
     if (!id) return;
     const c = citas.find(x => x.id === id);
     if (!c) return;
     if (!confirm(`¿Eliminar la cita de ${c.perro} del ${fmtDay(c.fecha)}, ${c.hora}? No se puede deshacer.`)) return;
+    const { error } = await sb.from('citas').delete().eq('id', id);
+    if (error) { toast('No se pudo eliminar la cita. Revisa tu conexión e intenta de nuevo.'); return; }
     citas = citas.filter(x => x.id !== id);
-    persist();
     updateCount();
     renderRegistros();
     toast('Cita eliminada');
@@ -562,7 +637,9 @@
     return cols.map(([k]) => {
       let v = obj[k];
       if (LIST_KEYS.includes(k)) v = asList(v).join(', ');
+      if (BOOL_KEYS.includes(k)) v = siNo(v);
       if (k === 'tipo') v = TIPO_LABEL[v] || v;
+      if (k === 'estado') v = ESTADO_LABEL[v] || v;
       if (STAMP_KEYS.includes(k)) v = v ? stamp(v) : '';
       return v ?? '';
     });
@@ -578,8 +655,9 @@
     return ws;
   }
 
-  $('#export').addEventListener('click', () => {
+  $('#export').addEventListener('click', async () => {
     if (!window.XLSX) { toast('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.'); return; }
+    try { await loadAll(); } catch { toast('No se pudieron cargar los datos más recientes. Revisa tu conexión.'); return; }
     if (!citas.length && !fichas.length) { toast('Todavía no hay registros para descargar.'); return; }
     const sortedCitas = [...citas].sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
     const sortedFichas = [...fichas].sort((a, b) => norm(a.perro).localeCompare(norm(b.perro)));
@@ -587,61 +665,137 @@
     XLSX.utils.book_append_sheet(wb, sheet(sortedCitas, CITA_COLS), 'Citas');
     XLSX.utils.book_append_sheet(wb, sheet(sortedFichas, FICHA_COLS), 'Fichas');
     XLSX.writeFile(wb, `Katanas_Grooming_Citas_y_Clientes_${today()}.xlsx`);
-    try { localStorage.setItem(KEYS.export, new Date().toISOString()); } catch { /* sin almacenamiento */ }
     renderRegistros();
     toast('Excel descargado');
   });
 
-  function readSheet(ws, cols) {
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
-    if (!rows.length) return [];
-    const head = rows[0].map(h => String(h).trim());
-    const byLabel = Object.fromEntries(cols.map(([k, l]) => [l, k]));
-    const tipoBack = Object.fromEntries(Object.entries(TIPO_LABEL).map(([k, v]) => [v, k]));
-    return rows.slice(1).filter(r => r.some(Boolean)).map(r => {
-      const o = {};
-      head.forEach((h, i) => {
-        const k = byLabel[h];
-        if (!k) return;
-        let v = String(r[i] ?? '').trim();
-        if (LIST_KEYS.includes(k)) v = asList(v);
-        if (k === 'tipo') v = tipoBack[v] || v;
-        o[k] = v;
-      });
-      if (!o.id) o.id = uid();
-      return o;
-    });
+  // ---------- Registros guardados solo en este dispositivo (versión anterior) ----------
+  const OLD = { citas: 'katana.citas.v1', fichas: 'katana.fichas.v1' };
+  const readOld = k => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch { return []; } };
+
+  function renderMigrate() {
+    const oc = readOld(OLD.citas), of = readOld(OLD.fichas);
+    const box = $('#migrate');
+    if (!oc.length && !of.length) { box.hidden = true; return; }
+    $('#migrateText').textContent = `Este dispositivo tiene ${plural(oc.length, 'cita', 'citas')} y ${plural(of.length, 'ficha', 'fichas')} de la versión anterior que todavía no están en la base de datos.`;
+    box.hidden = false;
   }
 
-  $('#import').addEventListener('change', async e => {
-    const file = e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    if (!window.XLSX) { toast('No se pudo cargar el lector de Excel. Revisa tu conexión e intenta de nuevo.'); return; }
+  $('#migrateBtn').addEventListener('click', async () => {
+    const btn = $('#migrateBtn');
+    btn.disabled = true;
+    btn.textContent = 'Subiendo…';
     try {
-      const wb = XLSX.read(await file.arrayBuffer());
-      if (!wb.Sheets.Citas || !wb.Sheets.Fichas) {
-        toast('Ese archivo no tiene las hojas Citas y Fichas. Usa un Excel descargado desde esta app.');
-        return;
+      await loadAll();
+      const byKey = {};
+      for (const o of readOld(OLD.fichas)) {
+        const data = {
+          origen: o.origen || null, perro: o.perro, raza: o.raza || null, tamano: o.tamano || null, pelo: o.pelo || null,
+          sexo: o.sexo || null, esterilizado: o.esterilizado || null, cumple: o.cumple || null, vacunas: o.vacunas || null,
+          alergias: o.alergias || null, caracter: asList(o.caracter), notas: o.notas || null, novedades: o.novedades || null,
+          nombre: o.nombre, whatsapp: fmtWa(o.whatsapp), correo: o.correo || null, colonia: o.colonia || null,
+          contacto: o.contacto || null, como_conocio: o.comoConocio || null, desde_cuando: o.desdeCuando || null,
+          frecuencia: o.frecuencia || null, autoriza: o.autoriza === 'Sí', fotos: toBool(o.fotos), recordatorios: toBool(o.recordatorios)
+        };
+        if (o.creada) data.creada = o.creada;
+        const existing = findFicha(data.whatsapp, data.perro);
+        const { row } = existing ? { row: existing } : await upsertFicha(data);
+        byKey[keyOf(row.whatsapp, row.perro)] = row;
       }
-      const inCitas = readSheet(wb.Sheets.Citas, CITA_COLS);
-      const inFichas = readSheet(wb.Sheets.Fichas, FICHA_COLS);
-      inCitas.forEach(c => {
-        const i = citas.findIndex(x => x.id === c.id);
-        if (i >= 0) citas[i] = c; else citas.push(c);
+      const oldCitas = readOld(OLD.citas);
+      const rows = oldCitas.map(o => {
+        const f = byKey[keyOf(o.whatsapp, o.perro)] || findFicha(o.whatsapp, o.perro);
+        return {
+          creado: o.creado || undefined, fecha: o.fecha, hora: o.hora, perro: o.perro,
+          cliente: o.cliente || (f ? f.nombre : null), whatsapp: fmtWa(o.whatsapp), servicios: asList(o.servicios),
+          canal: o.canal || null, tipo: o.tipo, novedades: o.novedades || null, ficha_id: f ? f.id : null
+        };
       });
-      inFichas.forEach(f => {
-        const i = fichas.findIndex(x => x.id === f.id || keyOf(x.whatsapp, x.perro) === keyOf(f.whatsapp, f.perro));
-        if (i >= 0) fichas[i] = f; else fichas.push(f);
-      });
-      persist();
-      updateCount();
+      if (rows.length) {
+        const { error } = await sb.from('citas').insert(rows);
+        if (error) throw error;
+      }
+      try {
+        localStorage.setItem('katana.respaldo.v1', JSON.stringify({ citas: oldCitas, fichas: readOld(OLD.fichas) }));
+        localStorage.removeItem(OLD.citas);
+        localStorage.removeItem(OLD.fichas);
+      } catch { /* sin almacenamiento */ }
+      await loadAll();
       renderRegistros();
-      toast(`Cargamos ${inCitas.length} ${inCitas.length === 1 ? 'cita' : 'citas'} y ${inFichas.length} ${inFichas.length === 1 ? 'ficha' : 'fichas'}.`);
-    } catch {
-      toast('No pudimos leer ese archivo. Revisa que sea un .xlsx descargado desde esta app.');
+      toast('Registros subidos a la base de datos');
+    } catch (err) {
+      console.error(err);
+      toast('No se pudieron subir los registros. Revisa tu conexión e intenta de nuevo.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Subir a la base de datos';
     }
   });
+
+  // ---------- Sesión ----------
+  function isAuthError(err) {
+    const s = String(err?.code || '') + ' ' + String(err?.message || '');
+    return /PGRST301|JWT|401|not authenticated/i.test(s);
+  }
+
+  function showView(which) {
+    $('#loading').hidden = true;
+    const logged = which === 'app';
+    $('#view-login').hidden = logged;
+    $('#tabs').hidden = !logged;
+    $('#logout').hidden = !logged;
+    if (logged) switchTab('nueva');
+    else { $('#view-nueva').hidden = true; $('#view-registros').hidden = true; }
+  }
+
+  function loginError(msg) {
+    const p = $('#loginErr');
+    p.textContent = msg;
+    p.hidden = !msg;
+  }
+
+  $('#loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!sb) return;
+    const email = $('#loginEmail').value.trim();
+    const password = $('#loginPass').value;
+    if (!email || !password) { loginError('Escribe tu correo y tu contraseña.'); return; }
+    const btn = $('#loginBtn');
+    btn.disabled = true;
+    btn.textContent = 'Entrando…';
+    loginError('');
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    btn.disabled = false;
+    btn.textContent = 'Iniciar sesión';
+    if (error) {
+      loginError(/invalid/i.test(error.message)
+        ? 'El correo o la contraseña no coinciden. Revísalos e intenta de nuevo.'
+        : 'No se pudo iniciar sesión. Revisa tu conexión e intenta de nuevo.');
+    }
+  });
+
+  $('#logout').addEventListener('click', async () => {
+    await sb.auth.signOut();
+  });
+
+  let started = false;
+  async function onSession(session) {
+    if (!session) {
+      started = false;
+      citas = []; fichas = [];
+      $('#loginPass').value = '';
+      showView('login');
+      return;
+    }
+    if (started) return;
+    started = true;
+    showView('app');
+    resetForm();
+    try { await loadAll(); } catch (err) {
+      console.error(err);
+      toast('No se pudieron cargar las fichas. Revisa tu conexión.');
+    }
+  }
 
   // ---------- Aviso ----------
   let toastTimer;
@@ -650,11 +804,18 @@
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3600);
   }
 
   // ---------- Inicio ----------
   renderSteps();
-  updateCount();
-  show();
+  if (!sb) {
+    showView('login');
+    $('#loginBtn').disabled = true;
+    loginError(configured
+      ? 'No se pudo conectar con la base de datos. Revisa tu conexión y recarga la página.'
+      : 'Falta conectar la base de datos: completa config.js con los datos de Supabase.');
+  } else {
+    sb.auth.onAuthStateChange((_event, session) => { onSession(session); });
+  }
 })();

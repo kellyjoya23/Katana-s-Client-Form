@@ -11,7 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Days+One&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+  <script src="config.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -25,7 +27,8 @@
           <span class="sub">GROOMING</span>
         </span>
       </div>
-      <div class="tabs" role="tablist" aria-label="Secciones">
+      <button type="button" class="logout" id="logout" hidden>Cerrar sesión</button>
+      <div class="tabs" role="tablist" aria-label="Secciones" id="tabs" hidden>
         <button class="tab" role="tab" id="tab-nueva" aria-controls="view-nueva" aria-selected="true">Nueva cita</button>
         <button class="tab" role="tab" id="tab-registros" aria-controls="view-registros" aria-selected="false">Registros <span class="count" id="count">0</span></button>
       </div>
@@ -33,7 +36,26 @@
   </header>
 
   <main>
-    <section id="view-nueva" role="tabpanel" aria-labelledby="tab-nueva">
+    <p class="loading" id="loading">Cargando…</p>
+
+    <section id="view-login" hidden>
+      <form id="loginForm" class="card login" novalidate>
+        <h2>Iniciar sesión</h2>
+        <p class="intro">Entra con la cuenta que te dio Katana's.</p>
+        <div class="field">
+          <label for="loginEmail">Correo</label>
+          <input id="loginEmail" type="email" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="loginPass">Contraseña</label>
+          <input id="loginPass" type="password" autocomplete="current-password" required>
+        </div>
+        <p class="err" id="loginErr" hidden></p>
+        <button type="submit" class="btn btn-primary btn-block" id="loginBtn">Iniciar sesión</button>
+      </form>
+    </section>
+
+    <section id="view-nueva" role="tabpanel" aria-labelledby="tab-nueva" hidden>
       <form id="form" class="card" novalidate>
         <div class="form-body">
           <div class="progress">
@@ -41,6 +63,7 @@
             <p class="step-label" id="stepLabel"></p>
           </div>
           <div id="steps"></div>
+          <p class="err" id="saveErr" hidden></p>
         </div>
         <div class="nav">
           <button type="button" class="btn btn-ghost" id="back">Atrás</button>
@@ -50,7 +73,7 @@
 
       <div id="done" class="card done" hidden>
         <div class="done-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
-        <h2 tabindex="-1">Cita registrada</h2>
+        <h2 tabindex="-1">Cita guardada</h2>
         <p class="done-summary" id="doneSummary"></p>
         <p class="note" id="doneNote"></p>
         <div class="done-actions">
@@ -66,14 +89,16 @@
           <h2>Registros</h2>
           <p class="reg-stats" id="regStats"></p>
         </div>
+
+        <div class="migrate" id="migrate" hidden>
+          <p id="migrateText"></p>
+          <button type="button" class="btn btn-primary" id="migrateBtn">Subir a la base de datos</button>
+        </div>
+
         <div class="actions">
           <button type="button" class="btn btn-primary" id="export">Descargar Excel</button>
-          <label class="btn btn-ghost file-btn">
-            Cargar Excel
-            <input type="file" id="import" accept=".xlsx">
-          </label>
+          <button type="button" class="btn btn-ghost" id="refresh">Actualizar</button>
         </div>
-        <p class="note" id="storageNote"></p>
 
         <div class="seg" role="tablist" aria-label="Tipo de registro">
           <button class="seg-btn" role="tab" data-list="citas" aria-selected="true">Citas</button>
