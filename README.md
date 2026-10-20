@@ -71,12 +71,17 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
 - **Mensajes que se preparan solos:**
   | Mensaje | Cuándo | A quién |
   | --- | --- | --- |
-  | Confirmación de cita | Al agendar y al reprogramar | Todos |
+  | Confirmación de cita (texto de Katana's: duración, no esperar en el local, cancelación, 15 minutos de tolerancia y recargo de $1 por hora; a clientes nuevos, también la autorización de datos, fotos y recordatorios) | Al agendar y al reprogramar | Todos |
   | Cita de mañana | La víspera; si no se envió, aparece como "atrasado" el mismo día antes de la cita | Quien no dijo "No" a recordatorios |
   | Le toca volver | Cuando pasan 15 días, 1 mes o 2 meses (según la frecuencia del perro) desde su última visita y no tiene otra cita | Solo quien aceptó recordatorios |
   | Listo para recoger | Al entregar el perro | Todos |
 - **Correo automático:** la confirmación, el aviso de la víspera y "le toca volver" también salen por correo desde katanagrooming@gmail.com a quien dejó su correo (la confirmación, al guardar o reprogramar; lo demás, todos los días a las 8:00 a. m.).
-- **Nueva cita:** si ya hay otra cita a la misma hora, la app avisa; para agendarla igual, se vuelve a tocar el botón.
+- **Nueva cita:**
+  - Servicios con los nombres de Katana's: **Grooming completo**, **Grooming completo de deslanado**, **Grooming completo pelo corto**, **Baño completo** y **Hand stripping**, más los adicionales (limpieza de dientes, tratamiento de nudos, baño medicado, ozonoterapia).
+  - Solo son obligatorios el nombre de la persona encargada, el WhatsApp, el nombre y el sexo del perro. Lo demás se completa después en **Editar ficha**.
+  - Las fotos en redes y los recordatorios quedan en "Sí", porque la autorización va en el mensaje de confirmación. Se cambian a "No" solo si el cliente lo pide.
+  - **Agregar otro perro de este cliente** copia la cita y los datos del dueño; cada perro queda con su propia ficha y la confirmación sale en un solo mensaje para todos.
+  - Si ya hay otra cita a la misma hora (de otro cliente), la app avisa; para agendarla igual, se vuelve a tocar el botón.
 - **Registros:**
   - Buscador por perro, cliente o WhatsApp.
   - Citas agrupadas por día. Las que aún no ocurren se pueden **Reprogramar**, **Cancelar** (queda en el historial) o **Eliminar** (solo si fue un error). Las canceladas se pueden **Reactivar**.

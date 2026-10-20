@@ -392,3 +392,5 @@ main:focus { outline: none; }
   .tab { padding: 0 9px; font-size: 14px; }
   .count { min-width: 20px; height: 20px; }
 }
+
+.msg-text { white-space: pre-line; }

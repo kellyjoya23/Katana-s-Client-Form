@@ -5,7 +5,15 @@
   'use strict';
 
   // ---------- Opciones ----------
-  const SERVICIOS = ['Baño', 'Baño y corte', 'Corte de uñas', 'Limpieza de oídos', 'Deslanado'];
+  // Servicios con los nombres que Katana's usa con sus clientes
+  const PRINCIPALES = [
+    { v: 'Grooming completo', l: 'Grooming completo' },
+    { v: 'Grooming completo de deslanado', l: 'Grooming completo de deslanado' },
+    { v: 'Grooming completo pelo corto', l: 'Grooming completo pelo corto' },
+    { v: 'Baño completo', l: 'Baño completo' },
+    { v: 'Hand stripping', l: 'Hand stripping' }
+  ];
+  const ADICIONALES = ['Limpieza de dientes', 'Tratamiento de nudos', 'Baño medicado', 'Ozonoterapia'];
   const CANALES = ['WhatsApp', 'Llamada', 'Instagram', 'Facebook', 'TikTok', 'En el local'];
   const TIPOS = [
     { v: 'ficha', l: 'Sí, ya tiene ficha' },
@@ -24,7 +32,9 @@
       fields: [
         { name: 'fecha', label: 'Fecha de la cita', type: 'date', req: true },
         { name: 'hora', label: 'Hora', type: 'time', req: true },
-        { name: 'servicios', label: 'Servicios agendados', type: 'check', options: SERVICIOS, other: true, req: true },
+        { name: 'principal', label: 'Servicio', type: 'radio', options: PRINCIPALES, other: true, stack: true, req: true,
+          hint: 'Grooming completo: corte, baño, corte de uñas, limpieza de orejas y depilación. Deslanado y pelo corto: para perros que no necesitan corte. Baño completo: incluye corte de uñas.' },
+        { name: 'adicionales', label: 'Adicionales', type: 'check', options: ADICIONALES, other: true },
         { name: 'canal', label: '¿Por dónde agendó?', type: 'radio', options: CANALES, other: true, req: true },
         { name: 'tipo', label: "¿El perro ya tiene ficha en Katana's?", type: 'radio', options: TIPOS, stack: true, req: true,
           hint: 'Elige "Cliente de antes, sin ficha" para quienes ya venían antes de este registro.' }
@@ -48,25 +58,25 @@
     nuevo: {
       title: 'Cliente nuevo',
       fields: [
-        { name: 'como_conocio', label: "¿Cómo conoció Katana's?", type: 'radio', other: true, req: true,
+        { name: 'como_conocio', label: "¿Cómo conoció Katana's?", type: 'radio', other: true,
           options: ['Instagram', 'TikTok', 'Facebook', 'Google', 'Se lo recomendó alguien', 'Pasó por el local'] }
       ]
     },
     antes: {
       title: 'Cliente de antes',
       fields: [
-        { name: 'desde_cuando', label: "¿Desde cuándo viene a Katana's?", type: 'radio', req: true,
+        { name: 'desde_cuando', label: "¿Desde cuándo viene a Katana's?", type: 'radio',
           options: ['Menos de 1 año', 'De 1 a 3 años', 'De 3 a 5 años', 'Más de 5 años'] }
       ]
     },
     cliente: {
       title: 'Datos del cliente',
       fields: [
-        { name: 'nombre', label: 'Nombre completo', type: 'text', req: true },
+        { name: 'nombre', label: 'Nombre de la persona encargada', type: 'text', req: true },
         { name: 'whatsapp', label: 'WhatsApp', type: 'tel', req: true },
         { name: 'correo', label: 'Correo', type: 'email' },
         { name: 'colonia', label: 'Municipio o colonia', type: 'text', hint: 'Por ejemplo: San Salvador Centro, colonia Escalón.' },
-        { name: 'contacto', label: '¿Cómo prefiere que lo contactemos?', type: 'radio', req: true,
+        { name: 'contacto', label: '¿Cómo prefiere que lo contactemos?', type: 'radio',
           options: ['WhatsApp', 'Llamada', 'Correo'] }
       ]
     },
@@ -74,26 +84,27 @@
       title: 'El perro',
       fields: [
         { name: 'perro', label: 'Nombre del perro', type: 'text', req: true },
-        { name: 'raza', label: 'Raza', type: 'text', req: true, hint: 'Si es mestizo, escribe "mestizo".' },
-        { name: 'tamano', label: 'Tamaño', type: 'radio', req: true,
+        { name: 'raza', label: 'Raza', type: 'text', hint: 'Si es mestizo, escribe "mestizo".' },
+        { name: 'tamano', label: 'Tamaño', type: 'radio',
           options: ['Mini (menos de 5 kg)', 'Pequeño (5 a 10 kg)', 'Mediano (10 a 25 kg)', 'Grande (25 a 40 kg)', 'Gigante (más de 40 kg)'] },
-        { name: 'pelo', label: 'Tipo de pelo', type: 'radio', other: true, req: true,
+        { name: 'pelo', label: 'Tipo de pelo', type: 'radio', other: true,
           options: ['Corto', 'Largo', 'Rizado', 'Doble capa', 'Duro'] },
         { name: 'sexo', label: 'Sexo', type: 'radio', req: true, options: ['Macho', 'Hembra'] },
-        { name: 'esterilizado', label: '¿Está esterilizado?', type: 'radio', options: ['Sí', 'No', 'No sabe'] },
-        { name: 'cumple', label: 'Cumpleaños del perro', type: 'date',
-          hint: 'Si el cliente no sabe la fecha exacta, anota una aproximada.' },
-        { name: 'frecuencia', label: '¿Cada cuánto debería venir?', type: 'radio', req: true, options: FRECUENCIAS,
+        { name: 'esterilizado', label: '¿Está castrado o esterilizado?', type: 'radio', options: ['Sí', 'No', 'No sabe'] },
+        { name: 'cumple', label: 'Fecha de nacimiento', type: 'date',
+          hint: 'Si el cliente solo sabe la edad, anota una fecha aproximada.' },
+        { name: 'frecuencia', label: '¿Cada cuánto debería venir?', type: 'radio', options: FRECUENCIAS,
           hint: 'Con esto le recordamos al cliente cuando le toque volver.' }
       ]
     },
     salud: {
       title: 'Salud y carácter',
       fields: [
-        { name: 'vacunas', label: '¿Tiene las vacunas al día?', type: 'radio', req: true, options: ['Sí', 'No', 'No sabe'] },
+        { name: 'vacunas', label: '¿Tiene las vacunas al día?', type: 'radio', options: ['Sí', 'No', 'No sabe'] },
         { name: 'alergias', label: 'Alergias, problemas de piel o medicamentos', type: 'textarea',
           hint: 'Si no tiene, déjalo en blanco.' },
-        { name: 'caracter', label: 'Durante el baño o el corte, el perro…', type: 'check', other: true, req: true,
+        { name: 'caracter', label: 'Comportamiento durante el baño o el corte', type: 'check', other: true,
+          hint: 'Si todavía no lo sabes, déjalo en blanco y complétalo después en "Editar ficha".',
           options: [TRANQUILO, 'Se pone nervioso', 'No le gusta la secadora', 'Es sensible en las patas',
             'Es sensible en las orejas', 'Puede morder si se asusta'] },
         { name: 'notas', label: 'Notas del cliente', type: 'textarea', hint: 'Mañas, lo que le gusta, cómo prefiere el corte.' }
@@ -101,12 +112,10 @@
     },
     permisos: {
       title: 'Permisos',
-      intro: 'Pregúntale al cliente antes de marcar.',
+      intro: 'No hace falta preguntarlos: van incluidos en el mensaje de confirmación. Cámbialos a "No" solo si el cliente lo pide.',
       fields: [
-        { name: 'autoriza', label: 'Uso de datos', type: 'consent', req: true,
-          text: "El cliente autoriza a Katana's Grooming a guardar estos datos para agendar citas y cuidar a su perro." },
-        { name: 'fotos', label: '¿Autoriza publicar fotos del perro en redes?', type: 'radio', req: true, options: ['Sí', 'No'] },
-        { name: 'recordatorios', label: '¿Acepta recordatorios por WhatsApp (citas y cumpleaños del perro)?', type: 'radio', req: true, options: ['Sí', 'No'] }
+        { name: 'fotos', label: 'Fotos del perro en redes', type: 'radio', req: true, options: ['Sí', 'No'] },
+        { name: 'recordatorios', label: 'Recordatorios por WhatsApp y correo', type: 'radio', req: true, options: ['Sí', 'No'] }
       ]
     }
   };
@@ -115,7 +124,9 @@
   // Campos que se pueden editar en una ficha (todo menos el permiso de uso de datos)
   const EDIT_FICHA = [...STEPS.cliente.fields, ...STEPS.perro.fields, ...STEPS.salud.fields,
     ...STEPS.permisos.fields.filter(f => f.name !== 'autoriza')];
-  const EDIT_CITA = [STEPS.cita.fields[0], STEPS.cita.fields[1], STEPS.cita.fields[2]];
+  const EDIT_CITA = STEPS.cita.fields.filter(f => ['fecha', 'hora', 'principal', 'adicionales'].includes(f.name));
+  const servicioPrincipal = serv => asList(serv).find(x => PRINCIPALES.some(p => p.v === x)) || asList(serv)[0] || '';
+  const serviciosAdicionales = serv => { const p = servicioPrincipal(serv); return asList(serv).filter(x => x !== p); };
 
   // ---------- Columnas del Excel (clave en la base → título) ----------
   const CITA_COLS = [
@@ -199,8 +210,9 @@
   let avisos = [];
   const findFicha = (wa, perro) => fichas.find(f => keyOf(f.whatsapp, f.perro) === keyOf(wa, perro));
   const fichaDe = c => (c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : null) || findFicha(c.whatsapp, c.perro) || null;
-  const conflictos = (fecha, hora, exceptoId) => citas.filter(c =>
-    c.id !== exceptoId && c.estado !== 'cancelada' && c.fecha === fecha && c.hora === hhmm(hora));
+  const conflictos = (fecha, hora, exceptoId, wa) => citas.filter(c =>
+    c.id !== exceptoId && c.estado !== 'cancelada' && c.fecha === fecha && c.hora === hhmm(hora)
+    && !(wa && normWa(c.whatsapp) === normWa(wa)));
 
   async function loadAll() {
     const desde = new Date(Date.now() - 180 * 864e5).toISOString();
@@ -415,8 +427,8 @@
 
   // Aviso de choque de horario: se muestra una vez; si se vuelve a confirmar, se agenda igual
   let conflictoVisto = '';
-  function avisarConflicto(box, fecha, hora, exceptoId) {
-    const cf = conflictos(fecha, hora, exceptoId);
+  function avisarConflicto(box, fecha, hora, exceptoId, wa) {
+    const cf = conflictos(fecha, hora, exceptoId, wa);
     const clave = `${fecha} ${hora}`;
     if (!cf.length || conflictoVisto === clave) { box.hidden = true; return false; }
     conflictoVisto = clave;
@@ -511,7 +523,7 @@
     $('#dl-perro_b').innerHTML = perros.map(f => `<option value="${esc(f.perro)}">`).join('');
 
     const perroInput = $('#f-perro_b');
-    if (perros.length === 1 && !perroInput.value && document.activeElement !== perroInput) {
+    if (perros.length === 1 && !perroInput.value && document.activeElement !== perroInput && !perroInput.dataset.sinAuto) {
       perroInput.value = perros[0].perro;
     }
     const perro = getVal('perro_b');
@@ -538,7 +550,7 @@
     const tipo = getVal('tipo');
     const base = {
       fecha: getVal('fecha'), hora: getVal('hora'),
-      servicios: getVal('servicios'), canal: getVal('canal'), tipo
+      servicios: [getVal('principal'), ...getVal('adicionales')].filter(Boolean), canal: getVal('canal'), tipo
     };
     let note = '';
     let cita;
@@ -567,18 +579,25 @@
         desde_cuando: tipo === 'antes' ? getVal('desde_cuando') : null,
         frecuencia: getVal('frecuencia') || null,
         nombre: getVal('nombre'), whatsapp: fmtWa(getVal('whatsapp')), correo: getVal('correo') || null,
-        colonia: getVal('colonia') || null, contacto: getVal('contacto'),
-        perro: getVal('perro'), raza: getVal('raza'), tamano: getVal('tamano'), pelo: getVal('pelo'),
+        colonia: getVal('colonia') || null, contacto: getVal('contacto') || null,
+        perro: getVal('perro'), raza: getVal('raza') || null, tamano: getVal('tamano') || null, pelo: getVal('pelo') || null,
         sexo: getVal('sexo'), esterilizado: getVal('esterilizado') || null, cumple: getVal('cumple') || null,
-        vacunas: getVal('vacunas'), alergias: getVal('alergias') || null, caracter: getVal('caracter'),
+        vacunas: getVal('vacunas') || null, alergias: getVal('alergias') || null, caracter: getVal('caracter'),
         notas: getVal('notas') || null,
-        autoriza: getVal('autoriza').length > 0, fotos: toBool(getVal('fotos')), recordatorios: toBool(getVal('recordatorios'))
+        // El uso de datos, las fotos y los recordatorios se aceptan con el mensaje de confirmación
+        autoriza: true, fotos: toBool(getVal('fotos')), recordatorios: toBool(getVal('recordatorios'))
       };
       const { row, existed } = await upsertFicha(data);
       note = existed ? `${row.perro} ya tenía ficha con ese número: la actualizamos.` : `Ficha de ${row.perro} creada.`;
       cita = await insertCita({ ...base, ficha_id: row.id, whatsapp: row.whatsapp, perro: row.perro, cliente: row.nombre });
     }
 
+    ultimo = {
+      tipo, fecha: base.fecha, hora: base.hora, principal: getVal('principal'), adicionales: getVal('adicionales'), canal: getVal('canal'),
+      wa_b: tipo === 'ficha' ? getVal('wa_b') : '',
+      nombre: getVal('nombre'), whatsapp: getVal('whatsapp'), correo: getVal('correo'), colonia: getVal('colonia'),
+      contacto: getVal('contacto'), como_conocio: getVal('como_conocio'), desde_cuando: getVal('desde_cuando')
+    };
     updateCount();
     showDone(cita, note);
     const enviado = await enviarCorreoConfirmacion(cita);
@@ -590,14 +609,15 @@
     const done = $('#done');
     $('#doneSummary').textContent = `${c.perro} · ${fmtLong(c.fecha)}, ${hora12(c.hora)}`;
     $('#doneNote').textContent = [asList(c.servicios).join(', '), note].filter(Boolean).join('. ');
-    const item = { tipo: 'confirmacion', cita: c, ficha: fichaDe(c) };
+    const grupo = pendientes().find(it => it.tipo === 'confirmacion' && (it.citas || []).some(x => x.id === c.id));
+    const item = grupo || { tipo: 'confirmacion', cita: c, ficha: fichaDe(c) };
     const wa = c.fecha >= today() && normWa(c.whatsapp).length === 8;
     $('#doneConfirm').hidden = !wa;
     if (wa) {
       const a = $('#doneWa');
       a.href = waLink(c.whatsapp, mensaje(item));
       a.onclick = () => { registrarAviso(item, 'whatsapp', false, false); a.textContent = 'Confirmación enviada'; };
-      a.textContent = 'Enviar confirmación por WhatsApp';
+      a.textContent = item.citas?.length > 1 ? `Enviar confirmación de ${perrosDe(item)} por WhatsApp` : 'Enviar confirmación por WhatsApp';
     }
     $('#doneMail').textContent = '';
     done.hidden = false;
@@ -605,8 +625,13 @@
     $('h2', done).focus({ preventScroll: true });
   }
 
+  let ultimo = null;   // cliente de la última cita, para agregar otro perro sin repetir datos
+
   function resetForm() {
     form.reset();
+    delete $('#f-perro_b').dataset.sinAuto;
+    setVal('fotos', 'Sí', form);
+    setVal('recordatorios', 'Sí', form);
     $$('.other', form).forEach(o => { o.hidden = true; });
     $$('.err', form).forEach(p => { p.hidden = true; p.textContent = ''; });
     $$('.field.invalid', form).forEach(f => f.classList.remove('invalid'));
@@ -619,6 +644,19 @@
   }
 
   $('#again').addEventListener('click', resetForm);
+  $('#otroPerro').addEventListener('click', () => {
+    if (!ultimo) return;
+    const u = ultimo;
+    resetForm();
+    for (const k of ['fecha', 'hora', 'principal', 'adicionales', 'canal', 'tipo', 'wa_b', 'nombre', 'whatsapp', 'correo', 'colonia', 'contacto', 'como_conocio', 'desde_cuando']) {
+      if (u[k]) setVal(k, u[k], form);
+    }
+    conflictoVisto = `${u.fecha} ${u.hora}`;
+    idx = path().indexOf(u.tipo === 'ficha' ? 'buscar' : 'perro');
+    show(true);
+    if (u.tipo === 'ficha') { $('#f-perro_b').value = ''; $('#f-perro_b').dataset.sinAuto = '1'; updateMatch(); }
+    toast('Copiamos la cita y los datos del cliente. Llena los datos del otro perro; con "Atrás" puedes cambiar el servicio.');
+  });
   $('#toRegistros').addEventListener('click', () => { resetForm(); switchTab('registros'); });
 
   // ---------- Pestañas (con flechas del teclado) ----------
@@ -838,7 +876,8 @@
   $('#sheetCancel').addEventListener('click', () => sheet.close());
 
   function abrirReprogramar(c) {
-    abrirSheet(`Reprogramar la cita de ${c.perro}`, EDIT_CITA, { fecha: c.fecha, hora: c.hora, servicios: c.servicios }, { tipo: 'cita', obj: c });
+    abrirSheet(`Reprogramar la cita de ${c.perro}`, EDIT_CITA,
+      { fecha: c.fecha, hora: c.hora, principal: servicioPrincipal(c.servicios), adicionales: serviciosAdicionales(c.servicios) }, { tipo: 'cita', obj: c });
   }
 
   function abrirEditarFicha(f) {
@@ -862,10 +901,11 @@
     if (sheetModo.tipo === 'cita') {
       const c = sheetModo.obj;
       const fecha = getVal('fecha', sheetForm), hora = getVal('hora', sheetForm);
-      if (avisarConflicto($('#xconflicto'), fecha, hora, c.id)) return;
+      if (avisarConflicto($('#xconflicto'), fecha, hora, c.id, c.whatsapp)) return;
       btn.disabled = true; btn.textContent = 'Guardando…';
       const cambioHorario = fecha !== c.fecha || hora !== c.hora;
-      const ok = await actualizarCita(c.id, { fecha, hora, servicios: getVal('servicios', sheetForm) }, null);
+      const servicios = [getVal('principal', sheetForm), ...getVal('adicionales', sheetForm)].filter(Boolean);
+      const ok = await actualizarCita(c.id, { fecha, hora, servicios }, null);
       if (!ok) { btn.disabled = false; btn.textContent = 'Guardar cambios'; sheetError('No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.'); return; }
       sheet.close();
       if (cambioHorario) {
@@ -885,9 +925,9 @@
     const v = n => getVal(n, sheetForm);
     const data = {
       nombre: v('nombre'), whatsapp: fmtWa(v('whatsapp')), correo: v('correo') || null, colonia: v('colonia') || null,
-      contacto: v('contacto'), perro: v('perro'), raza: v('raza'), tamano: v('tamano'), pelo: v('pelo'), sexo: v('sexo'),
+      contacto: v('contacto') || null, perro: v('perro'), raza: v('raza') || null, tamano: v('tamano') || null, pelo: v('pelo') || null, sexo: v('sexo'),
       esterilizado: v('esterilizado') || null, cumple: v('cumple') || null, frecuencia: v('frecuencia') || null,
-      vacunas: v('vacunas'), alergias: v('alergias') || null, caracter: v('caracter'), notas: v('notas') || null,
+      vacunas: v('vacunas') || null, alergias: v('alergias') || null, caracter: v('caracter'), notas: v('notas') || null,
       fotos: toBool(v('fotos')), recordatorios: toBool(v('recordatorios'))
     };
     btn.disabled = true; btn.textContent = 'Guardando…';
@@ -1031,26 +1071,58 @@
   const TIPO_AVISO = { listo: 'Listo para recoger', dia_antes: 'Cita de mañana', confirmacion: 'Confirmación de cita', toca_volver: 'Le toca volver' };
   const ORDEN_AVISO = { listo: 0, dia_antes: 1, confirmacion: 2, toca_volver: 3 };
 
+  const perrosDe = item => { const l = (item.citas || [item.cita]).map(c => c.perro); return l.length < 2 ? l[0] : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1]; };
+  const conPunto = t => t.endsWith('.') ? t : t + '.';
+  const esPrimeraVez = item => (item.citas || [item.cita]).some(c => c.tipo === 'nuevo' || c.tipo === 'antes');
+
+  // Textos para el cliente. *texto* sale en negrita en WhatsApp.
   function mensaje(item) {
     const c = item.cita, f = item.ficha;
     const nombre = primerNombre(c?.cliente || f?.nombre);
     const hola = nombre ? `¡Hola, ${nombre}!` : '¡Hola!';
     if (item.tipo === 'confirmacion') {
-      return `${hola} Te confirmamos la cita de ${c.perro} en Katana's Grooming: ${fmtLong(c.fecha)} a las ${hora12(c.hora)}, para ${listaTxt(c.servicios)}. Si necesitas cambiarla, escríbenos por aquí. ¡Nos vemos!`;
+      const lineas = [
+        conPunto(`Será un placer atender a ${perrosDe(item)} el ${fmtLong(c.fecha)} a las ${hora12(c.hora)}`),
+        'El servicio de grooming tiene una duración aproximada de 2 a 3 horas, dependiendo del comportamiento de su mascota.',
+        '*Le informamos que no se permite esperar a su mascota en nuestro local.*',
+        'Si desea cancelar su cita, por favor háganoslo saber con al menos 1 hora de anticipación para permitir la liberación del espacio.',
+        '*En caso de no presentarse a la cita después de 15 minutos, lamentablemente no podremos recibir a su mascota.*',
+        '*Si no recoge a su mascota dentro de 1 hora después de notificarle que está lista, se aplicará un recargo de $1 por hora.*'
+      ];
+      if (esPrimeraVez(item)) {
+        lineas.push("Al confirmar su cita, nos autoriza a guardar sus datos para agendar sus citas, a enviarle recordatorios por WhatsApp y correo, y a compartir fotos de su mascota en nuestras redes. Si no está de acuerdo con alguno, háganoslo saber por aquí.");
+      }
+      return lineas.join('\n\n');
     }
     if (item.tipo === 'dia_antes') {
-      return item.atrasado
-        ? `${hola} Te recordamos que hoy a las ${hora12(c.hora)} esperamos a ${c.perro} en Katana's Grooming. Si no pueden venir, avísanos por aquí para darle el espacio a otro peludo.`
-        : `${hola} Te recordamos que mañana, ${fmtLong(c.fecha)}, a las ${hora12(c.hora)} esperamos a ${c.perro} en Katana's Grooming. Si no pueden venir, avísanos por aquí para darle el espacio a otro peludo.`;
+      const cuando = item.atrasado ? `hoy a las ${hora12(c.hora)}` : `mañana, ${fmtLong(c.fecha)}, a las ${hora12(c.hora)}`;
+      return `${hola} Le recordamos que ${cuando} esperamos a ${perrosDe(item)} en Katana's Grooming. Si no puede asistir, por favor háganoslo saber con al menos 1 hora de anticipación.`;
     }
     if (item.tipo === 'listo') {
-      return `${hola} ${c.perro} ya está listo y te espera en Katana's Grooming.`;
+      const varios = (item.citas || []).length > 1;
+      return `${hola} ${perrosDe(item)} ya ${varios ? 'están listos y le esperan' : 'está listo y le espera'} en Katana's Grooming. Le recordamos que, pasada 1 hora, se aplica un recargo de $1 por hora.`;
     }
-    return `${hola} Ya ${TIEMPO_TXT[item.dias] || 'pasó un tiempo'} desde la última visita de ${f.perro} a Katana's Grooming. ¿Le agendamos la próxima? Respóndenos con el día y la hora que te quedan mejor.`;
+    return `${hola} Ya ${TIEMPO_TXT[item.dias] || 'pasó un tiempo'} desde la última visita de ${f.perro} a Katana's Grooming. ¿Le agendamos la próxima? Respóndanos con el día y la hora que le quedan mejor.`;
   }
+
+  // Vista previa: las negritas de WhatsApp se muestran como negritas
+  const vistaPrevia = texto => esc(texto).replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>');
 
   const avisoDe = (tipo, canal, item) => avisos.find(a => a.tipo === tipo && a.canal === canal && (
     tipo === 'toca_volver' ? a.ficha_id === item.ficha.id && a.ref_fecha === item.ref : a.cita_id === item.cita.id));
+
+  // Junta en un solo mensaje los perros del mismo cliente con cita a la misma hora
+  function agrupar(items) {
+    const out = [], grupos = {};
+    for (const it of items) {
+      if (!it.cita) { out.push(it); continue; }
+      const k = [it.tipo, normWa(it.cita.whatsapp), it.cita.fecha, it.cita.hora, it.atrasado ? 1 : 0].join('|');
+      if (grupos[k]) { grupos[k].citas.push(it.cita); continue; }
+      grupos[k] = { ...it, citas: [it.cita] };
+      out.push(grupos[k]);
+    }
+    return out;
+  }
 
   function pendientes() {
     const t = today(), manana = addDays(t, 1), ahora = ahoraHHMM();
@@ -1077,29 +1149,39 @@
       const item = { tipo: 'toca_volver', ficha: f, ref: ult, dias };
       if (!avisoDe('toca_volver', 'whatsapp', item)) out.push(item);
     }
-    return out.sort((a, b) => ORDEN_AVISO[a.tipo] - ORDEN_AVISO[b.tipo]);
+    return agrupar(out).sort((a, b) => ORDEN_AVISO[a.tipo] - ORDEN_AVISO[b.tipo]);
   }
 
   async function registrarAviso(item, canal, omitido, conDeshacer = true) {
-    const row = {
+    const lista = item.citas || (item.cita ? [item.cita] : [null]);
+    const rows = lista.map(c => ({
       tipo: item.tipo, canal, omitido,
-      cita_id: item.cita?.id || null,
-      ficha_id: item.ficha?.id || null,
+      cita_id: c?.id || null,
+      ficha_id: (c ? fichaDe(c)?.id : item.ficha?.id) || null,
       ref_fecha: item.tipo === 'toca_volver' ? item.ref : null,
-      destino: canal === 'whatsapp' ? fmtWa(item.cita?.whatsapp || item.ficha?.whatsapp) : null
-    };
-    const local = { ...row, creado: new Date().toISOString() };
-    avisos.push(local);
+      destino: canal === 'whatsapp' ? fmtWa(c?.whatsapp || item.ficha?.whatsapp) : null
+    }));
+    const locales = rows.map(r => ({ ...r, creado: new Date().toISOString() }));
+    avisos.push(...locales);
     updateCount();
     if (!$('#view-hoy').hidden) renderHoy();
-    const { data, error } = await sb.from('avisos').insert(row).select().single();
-    if (error && error.code !== '23505') {
-      avisos = avisos.filter(a => a !== local);
+    const data = [];
+    let error = null, repetido = false;
+    for (const r of rows) {
+      const res = await sb.from('avisos').insert(r).select().single();
+      if (res.error?.code === '23505') { repetido = true; continue; }   // ya lo marcó otro dispositivo
+      if (res.error) { error = res.error; break; }
+      data.push(res.data);
+    }
+    avisos = avisos.filter(a => !locales.includes(a));
+    if (error) {
+      if (data.length) await sb.from('avisos').delete().in('id', data.map(d => d.id));
       toast('No se pudo marcar el mensaje. Revisa tu conexión.');
-    } else if (data) {
-      avisos[avisos.indexOf(local)] = data;
-      if (conDeshacer) {
-        const perro = item.cita?.perro || item.ficha?.perro;
+    } else {
+      avisos.push(...data);
+      if (repetido) { try { await loadAll(); } catch { /* sin conexión */ } }
+      if (conDeshacer && data?.length) {
+        const perro = item.citas ? perrosDe(item) : (item.cita?.perro || item.ficha?.perro);
         toast(omitido ? `${TIPO_AVISO[item.tipo]} de ${perro}: no se enviará` : `${TIPO_AVISO[item.tipo]} de ${perro}: marcado como enviado`,
           { accion: 'Deshacer', fn: () => deshacerAviso(data) });
       }
@@ -1108,10 +1190,11 @@
     if (!$('#view-hoy').hidden) renderHoy();
   }
 
-  async function deshacerAviso(row) {
-    const { error } = await sb.from('avisos').delete().eq('id', row.id);
+  async function deshacerAviso(rows) {
+    const ids = rows.map(r => r.id);
+    const { error } = await sb.from('avisos').delete().in('id', ids);
     if (error) { toast('No se pudo deshacer. Revisa tu conexión.'); return; }
-    avisos = avisos.filter(a => a.id !== row.id);
+    avisos = avisos.filter(a => !ids.includes(a.id));
     updateCount();
     renderHoy();
     toast('Listo: el mensaje volvió a la lista');
@@ -1204,7 +1287,7 @@
     $('#hoyMensajes').innerHTML = pendLista.length
       ? `<ul class="rows">${pendLista.map((it, i) => {
           const c = it.cita, f = it.ficha;
-          const perro = c?.perro || f?.perro;
+          const perro = it.citas ? perrosDe(it) : (c?.perro || f?.perro);
           const cliente = c?.cliente || f?.nombre || 'Cliente sin ficha';
           const num = c?.whatsapp || f?.whatsapp;
           const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}` : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
@@ -1214,7 +1297,7 @@
             <p class="msg-type">${esc(etiqueta)}</p>
             <p class="name">${esc(perro)}</p>
             <p class="meta">${esc(cliente)} · ${esc(fmtWa(num))} · ${esc(extra)}</p>
-            <p class="msg-text">${esc(mensaje(it))}</p>
+            <p class="msg-text">${vistaPrevia(mensaje(it))}</p>
             ${correo}
             <div class="row-actions">
               <a class="btn btn-wa btn-sm" href="${esc(waLink(num, mensaje(it)))}" target="_blank" rel="noopener" data-send="${i}">Enviar por WhatsApp</a>
