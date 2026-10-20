@@ -14,8 +14,6 @@ App web para que el equipo de Katana's registre cada cita y, de paso, arme la ba
 | `icons/`, `manifest.webmanifest` | Ícono y nombre de la app al agregarla a la pantalla de inicio |
 | `vercel.json` | Encabezados de seguridad (política de contenido, bloqueo de iframes) |
 | `supabase/schema.sql` | Tablas y reglas de seguridad de la base de datos |
-| `supabase/functions/avisos-correo/index.ts` | Función que envía los correos automáticos |
-| `supabase/revision_diaria.sql` | Tarea diaria (8:00 a. m.) que dispara los correos |
 
 No hay que instalar nada ni compilar.
 
@@ -23,7 +21,7 @@ No hay que instalar nada ni compilar.
 
 Proyecto: **katanas-grooming** (cuenta katanagrooming@gmail.com).
 
-Las tablas `fichas` y `citas` ya están creadas, con sus reglas de seguridad. `supabase/schema.sql` es la copia de esa estructura: sirve para revisarla o para recrearla en otro proyecto (en **SQL Editor → New query → Run**). Se puede volver a ejecutar sin perder datos.
+Las tablas `fichas`, `citas` y `avisos` ya están creadas, con sus reglas de seguridad. `supabase/schema.sql` es la copia de esa estructura: sirve para revisarla o para recrearla en otro proyecto (en **SQL Editor → New query → Run**). Se puede volver a ejecutar sin perder datos.
 
 ## 2. Crear las cuentas del equipo
 
@@ -71,15 +69,15 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
 - **Mensajes que se preparan solos:**
   | Mensaje | Cuándo | A quién |
   | --- | --- | --- |
-  | Confirmación de cita (texto de Katana's: duración, no esperar en el local, cancelación, 15 minutos de tolerancia y recargo de $1 por hora; a clientes nuevos, también la autorización de datos, fotos y recordatorios) | Al agendar y al reprogramar | Todos |
+  | Confirmación de cita (texto de Katana's: duración, no esperar en el local, cancelación, 15 minutos de tolerancia y recargo de $1 por hora; a clientes nuevos, también el aviso de autorización de fotos en redes, datos y recordatorios) | Al agendar y al reprogramar | Todos |
   | Cita de mañana | La víspera; si no se envió, aparece como "atrasado" el mismo día antes de la cita | Quien no dijo "No" a recordatorios |
   | Le toca volver | Cuando pasan 15 días, 1 mes o 2 meses (según la frecuencia del perro) desde su última visita y no tiene otra cita | Solo quien aceptó recordatorios |
   | Listo para recoger | Al entregar el perro | Todos |
-- **Correo automático:** la confirmación, el aviso de la víspera y "le toca volver" también salen por correo desde katanagrooming@gmail.com a quien dejó su correo (la confirmación, al guardar o reprogramar; lo demás, todos los días a las 8:00 a. m.).
+- **Todo sale por WhatsApp.** La app no pide ni usa correos de clientes.
 - **Nueva cita:**
   - Servicios con los nombres de Katana's: **Grooming completo**, **Grooming completo de deslanado**, **Grooming completo pelo corto**, **Baño completo** y **Hand stripping**, más los adicionales (limpieza de dientes, tratamiento de nudos, baño medicado, ozonoterapia).
   - Solo son obligatorios el nombre de la persona encargada, el WhatsApp, el nombre y el sexo del perro. Lo demás se completa después en **Editar ficha**.
-  - Las fotos en redes y los recordatorios quedan en "Sí", porque la autorización va en el mensaje de confirmación. Se cambian a "No" solo si el cliente lo pide.
+  - El formulario no pregunta permisos: la autorización de fotos en redes y recordatorios va en el mensaje de confirmación. Si el cliente responde que no, se cambia en **Editar ficha**, y sus citas muestran la etiqueta "No publicar fotos".
   - **Agregar otro perro de este cliente** copia la cita y los datos del dueño; cada perro queda con su propia ficha y la confirmación sale en un solo mensaje para todos.
   - Si ya hay otra cita a la misma hora (de otro cliente), la app avisa; para agendarla igual, se vuelve a tocar el botón.
 - **Registros:**
@@ -87,16 +85,6 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
   - Citas agrupadas por día. Las que aún no ocurren se pueden **Reprogramar**, **Cancelar** (queda en el historial) o **Eliminar** (solo si fue un error). Las canceladas se pueden **Reactivar**.
   - **Editar ficha** en cada perro; si la ficha no tiene citas, también se puede eliminar.
   - **Descargar Excel** con citas (incluye llegada, salida y notas) y fichas.
-
-## Activar los correos (una sola vez)
-
-Los correos salen de katanagrooming@gmail.com con una **contraseña de aplicación** de Google (no es la contraseña normal):
-
-1. Entra a myaccount.google.com con katanagrooming@gmail.com → **Seguridad** → activa la **Verificación en dos pasos** si no está activa.
-2. Busca **Contraseñas de aplicaciones**, crea una llamada `Katana app` y copia las 16 letras.
-3. En Supabase → **Edge Functions → Secrets**, agrega `GMAIL_APP_PASSWORD` con esas 16 letras.
-
-Mientras no esté, todo lo demás funciona; solo no salen correos.
 
 ## Tipografía
 
@@ -111,3 +99,4 @@ El encabezado muestra un monograma provisional. Para usar el logo oficial, sube 
 - En el plan gratuito de Supabase, un proyecto que pasa **una semana sin uso** se pausa y hay que reactivarlo desde el panel. Con el uso diario de la agenda no debería pasar.
 - Para no perder historial, la base solo deja eliminar fichas sin citas y citas que todavía no ocurren. Lo demás se cancela.
 - Descargar el Excel de vez en cuando sirve como respaldo propio.
+- Los correos automáticos están desactivados (la tarea diaria se quitó). La función `avisos-correo` sigue en Supabase sin uso; se puede borrar en **Edge Functions**.

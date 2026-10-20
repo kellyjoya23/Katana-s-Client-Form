@@ -74,10 +74,9 @@
       fields: [
         { name: 'nombre', label: 'Nombre de la persona encargada', type: 'text', req: true },
         { name: 'whatsapp', label: 'WhatsApp', type: 'tel', req: true },
-        { name: 'correo', label: 'Correo', type: 'email' },
         { name: 'colonia', label: 'Municipio o colonia', type: 'text', hint: 'Por ejemplo: San Salvador Centro, colonia Escalón.' },
         { name: 'contacto', label: '¿Cómo prefiere que lo contactemos?', type: 'radio',
-          options: ['WhatsApp', 'Llamada', 'Correo'] }
+          options: ['WhatsApp', 'Llamada'] }
       ]
     },
     perro: {
@@ -109,21 +108,19 @@
             'Es sensible en las orejas', 'Puede morder si se asusta'] },
         { name: 'notas', label: 'Notas del cliente', type: 'textarea', hint: 'Mañas, lo que le gusta, cómo prefiere el corte.' }
       ]
-    },
-    permisos: {
-      title: 'Permisos',
-      intro: 'No hace falta preguntarlos: van incluidos en el mensaje de confirmación. Cámbialos a "No" solo si el cliente lo pide.',
-      fields: [
-        { name: 'fotos', label: 'Fotos del perro en redes', type: 'radio', req: true, options: ['Sí', 'No'] },
-        { name: 'recordatorios', label: 'Recordatorios por WhatsApp y correo', type: 'radio', req: true, options: ['Sí', 'No'] }
-      ]
     }
   };
-  const FICHA_STEPS = ['cliente', 'perro', 'salud', 'permisos'];
+  const FICHA_STEPS = ['cliente', 'perro', 'salud'];
+
+  // La autorización va en el mensaje de confirmación; si el cliente responde que no, se cambia aquí
+  const PERMISOS = [
+    { name: 'fotos', label: 'Fotos del perro en redes', type: 'radio', req: true, options: ['Sí', 'No'],
+      hint: 'Ponlo en "No" si el cliente respondió que no a la confirmación.' },
+    { name: 'recordatorios', label: 'Recordatorios por WhatsApp', type: 'radio', req: true, options: ['Sí', 'No'] }
+  ];
 
   // Campos que se pueden editar en una ficha (todo menos el permiso de uso de datos)
-  const EDIT_FICHA = [...STEPS.cliente.fields, ...STEPS.perro.fields, ...STEPS.salud.fields,
-    ...STEPS.permisos.fields.filter(f => f.name !== 'autoriza')];
+  const EDIT_FICHA = [...STEPS.cliente.fields, ...STEPS.perro.fields, ...STEPS.salud.fields, ...PERMISOS];
   const EDIT_CITA = STEPS.cita.fields.filter(f => ['fecha', 'hora', 'principal', 'adicionales'].includes(f.name));
   const servicioPrincipal = serv => asList(serv).find(x => PRINCIPALES.some(p => p.v === x)) || asList(serv)[0] || '';
   const serviciosAdicionales = serv => { const p = servicioPrincipal(serv); return asList(serv).filter(x => x !== p); };
@@ -141,7 +138,7 @@
     ['perro', 'Perro'], ['raza', 'Raza'], ['tamano', 'Tamaño'], ['pelo', 'Tipo de pelo'], ['sexo', 'Sexo'],
     ['esterilizado', 'Esterilizado'], ['cumple', 'Cumpleaños'], ['vacunas', 'Vacunas al día'],
     ['alergias', 'Alergias, piel o medicamentos'], ['caracter', 'Carácter en grooming'], ['notas', 'Notas del cliente'],
-    ['novedades', 'Novedades'], ['nombre', 'Cliente'], ['whatsapp', 'WhatsApp'], ['correo', 'Correo'],
+    ['novedades', 'Novedades'], ['nombre', 'Cliente'], ['whatsapp', 'WhatsApp'],
     ['colonia', 'Municipio o colonia'], ['contacto', 'Contacto preferido'], ['como_conocio', "Cómo conoció Katana's"],
     ['desde_cuando', 'Cliente desde'], ['frecuencia', 'Frecuencia'], ['autoriza', 'Autoriza uso de datos'],
     ['fotos', 'Fotos en redes'], ['recordatorios', 'Recordatorios por WhatsApp']
@@ -236,7 +233,7 @@
       // Solo se actualiza lo que se llenó; se conservan el nombre, el origen y lo que ya estaba
       const patch = {};
       for (const [k, v] of Object.entries(data)) {
-        if (['perro', 'origen', 'creada'].includes(k)) continue;
+        if (['perro', 'origen', 'creada', 'autoriza', 'fotos', 'recordatorios'].includes(k)) continue;
         if (v === null || v === '' || (Array.isArray(v) && !v.length)) continue;
         patch[k] = v;
       }
@@ -511,6 +508,7 @@
   function alertsFor(f) {
     if (!f) return [];
     const list = asList(f.caracter).filter(c => c !== TRANQUILO);
+    if (f.fotos === false) list.push('No publicar fotos');
     if (f.alergias) list.push('Alergias: ' + f.alergias);
     return list;
   }
@@ -578,14 +576,14 @@
         como_conocio: tipo === 'nuevo' ? getVal('como_conocio') : null,
         desde_cuando: tipo === 'antes' ? getVal('desde_cuando') : null,
         frecuencia: getVal('frecuencia') || null,
-        nombre: getVal('nombre'), whatsapp: fmtWa(getVal('whatsapp')), correo: getVal('correo') || null,
+        nombre: getVal('nombre'), whatsapp: fmtWa(getVal('whatsapp')),
         colonia: getVal('colonia') || null, contacto: getVal('contacto') || null,
         perro: getVal('perro'), raza: getVal('raza') || null, tamano: getVal('tamano') || null, pelo: getVal('pelo') || null,
         sexo: getVal('sexo'), esterilizado: getVal('esterilizado') || null, cumple: getVal('cumple') || null,
         vacunas: getVal('vacunas') || null, alergias: getVal('alergias') || null, caracter: getVal('caracter'),
         notas: getVal('notas') || null,
         // El uso de datos, las fotos y los recordatorios se aceptan con el mensaje de confirmación
-        autoriza: true, fotos: toBool(getVal('fotos')), recordatorios: toBool(getVal('recordatorios'))
+        autoriza: true, fotos: true, recordatorios: true
       };
       const { row, existed } = await upsertFicha(data);
       note = existed ? `${row.perro} ya tenía ficha con ese número: la actualizamos.` : `Ficha de ${row.perro} creada.`;
@@ -595,13 +593,11 @@
     ultimo = {
       tipo, fecha: base.fecha, hora: base.hora, principal: getVal('principal'), adicionales: getVal('adicionales'), canal: getVal('canal'),
       wa_b: tipo === 'ficha' ? getVal('wa_b') : '',
-      nombre: getVal('nombre'), whatsapp: getVal('whatsapp'), correo: getVal('correo'), colonia: getVal('colonia'),
+      nombre: getVal('nombre'), whatsapp: getVal('whatsapp'), colonia: getVal('colonia'),
       contacto: getVal('contacto'), como_conocio: getVal('como_conocio'), desde_cuando: getVal('desde_cuando')
     };
     updateCount();
     showDone(cita, note);
-    const enviado = await enviarCorreoConfirmacion(cita);
-    if (enviado) $('#doneMail').textContent = enviado;
   }
 
   function showDone(c, note) {
@@ -619,7 +615,6 @@
       a.onclick = () => { registrarAviso(item, 'whatsapp', false, false); a.textContent = 'Confirmación enviada'; };
       a.textContent = item.citas?.length > 1 ? `Enviar confirmación de ${perrosDe(item)} por WhatsApp` : 'Enviar confirmación por WhatsApp';
     }
-    $('#doneMail').textContent = '';
     done.hidden = false;
     window.scrollTo({ top: 0 });
     $('h2', done).focus({ preventScroll: true });
@@ -630,8 +625,6 @@
   function resetForm() {
     form.reset();
     delete $('#f-perro_b').dataset.sinAuto;
-    setVal('fotos', 'Sí', form);
-    setVal('recordatorios', 'Sí', form);
     $$('.other', form).forEach(o => { o.hidden = true; });
     $$('.err', form).forEach(p => { p.hidden = true; p.textContent = ''; });
     $$('.field.invalid', form).forEach(f => f.classList.remove('invalid'));
@@ -648,7 +641,7 @@
     if (!ultimo) return;
     const u = ultimo;
     resetForm();
-    for (const k of ['fecha', 'hora', 'principal', 'adicionales', 'canal', 'tipo', 'wa_b', 'nombre', 'whatsapp', 'correo', 'colonia', 'contacto', 'como_conocio', 'desde_cuando']) {
+    for (const k of ['fecha', 'hora', 'principal', 'adicionales', 'canal', 'tipo', 'wa_b', 'nombre', 'whatsapp', 'colonia', 'contacto', 'como_conocio', 'desde_cuando']) {
       if (u[k]) setVal(k, u[k], form);
     }
     conflictoVisto = `${u.fecha} ${u.hora}`;
@@ -909,12 +902,11 @@
       if (!ok) { btn.disabled = false; btn.textContent = 'Guardar cambios'; sheetError('No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.'); return; }
       sheet.close();
       if (cambioHorario) {
-        // La confirmación anterior ya no sirve: se borra para que aparezca de nuevo en Hoy y salga otro correo
+        // La confirmación anterior ya no sirve: se borra para que aparezca de nuevo en Hoy
         await sb.from('avisos').delete().eq('cita_id', c.id).in('tipo', ['confirmacion', 'dia_antes']);
         avisos = avisos.filter(a => !(a.cita_id === c.id && ['confirmacion', 'dia_antes'].includes(a.tipo)));
         updateCount(); renderRegistros(); renderHoy();
-        const correo = await enviarCorreoConfirmacion(c);
-        toast(`Cita reprogramada (${fmtDay(fecha)}, ${hora12(hora)}). Envía la nueva confirmación desde Hoy.${correo ? ' El correo ya salió.' : ''}`);
+        toast(`Cita reprogramada (${fmtDay(fecha)}, ${hora12(hora)}). Envía la nueva confirmación desde Hoy.`);
       } else {
         toast('Cita actualizada');
       }
@@ -924,7 +916,7 @@
     const f = sheetModo.obj;
     const v = n => getVal(n, sheetForm);
     const data = {
-      nombre: v('nombre'), whatsapp: fmtWa(v('whatsapp')), correo: v('correo') || null, colonia: v('colonia') || null,
+      nombre: v('nombre'), whatsapp: fmtWa(v('whatsapp')), colonia: v('colonia') || null,
       contacto: v('contacto') || null, perro: v('perro'), raza: v('raza') || null, tamano: v('tamano') || null, pelo: v('pelo') || null, sexo: v('sexo'),
       esterilizado: v('esterilizado') || null, cumple: v('cumple') || null, frecuencia: v('frecuencia') || null,
       vacunas: v('vacunas') || null, alergias: v('alergias') || null, caracter: v('caracter'), notas: v('notas') || null,
@@ -1090,7 +1082,7 @@
         '*Si no recoge a su mascota dentro de 1 hora después de notificarle que está lista, se aplicará un recargo de $1 por hora.*'
       ];
       if (esPrimeraVez(item)) {
-        lineas.push("Al confirmar su cita, nos autoriza a guardar sus datos para agendar sus citas, a enviarle recordatorios por WhatsApp y correo, y a compartir fotos de su mascota en nuestras redes. Si no está de acuerdo con alguno, háganoslo saber por aquí.");
+        lineas.push("Al confirmar su cita, nos autoriza a compartir fotos de su mascota en nuestras redes sociales, a guardar sus datos para agendar sus citas y a enviarle recordatorios por WhatsApp. Si no está de acuerdo con alguno, háganoslo saber por aquí.");
       }
       return lineas.join('\n\n');
     }
@@ -1200,24 +1192,6 @@
     toast('Listo: el mensaje volvió a la lista');
   }
 
-  // Devuelve un texto para mostrar si el correo salió, o '' si no aplica
-  async function enviarCorreoConfirmacion(cita) {
-    const f = fichaDe(cita);
-    if (!f?.correo || cita.fecha < today()) return '';
-    try {
-      const { data, error } = await sb.functions.invoke('avisos-correo', { body: { modo: 'confirmacion', cita_id: cita.id } });
-      if (error) throw error;
-      if (data?.enviados > 0) {
-        avisos.push({ tipo: 'confirmacion', canal: 'correo', cita_id: cita.id, creado: new Date().toISOString() });
-        return `También le enviamos la confirmación a ${f.correo}.`;
-      }
-      return '';
-    } catch (err) {
-      console.error(err);
-      return 'El correo de confirmación no salió ahora; se intentará de nuevo mañana a las 8:00 a. m.';
-    }
-  }
-
   let abierto = null;   // { id, act } del formulario de llegada/entrega abierto
 
   async function refreshHoy() {
@@ -1292,13 +1266,11 @@
           const num = c?.whatsapp || f?.whatsapp;
           const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}` : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
           const etiqueta = it.atrasado ? 'Recordatorio atrasado · la cita es hoy' : TIPO_AVISO[it.tipo];
-          const correo = avisoDe(it.tipo, 'correo', it) ? '<p class="note">El correo ya salió.</p>' : '';
           return `<li class="row msg tipo-${it.tipo}${it.atrasado ? ' atrasado' : ''}"><div>
             <p class="msg-type">${esc(etiqueta)}</p>
             <p class="name">${esc(perro)}</p>
             <p class="meta">${esc(cliente)} · ${esc(fmtWa(num))} · ${esc(extra)}</p>
             <p class="msg-text">${vistaPrevia(mensaje(it))}</p>
-            ${correo}
             <div class="row-actions">
               <a class="btn btn-wa btn-sm" href="${esc(waLink(num, mensaje(it)))}" target="_blank" rel="noopener" data-send="${i}">Enviar por WhatsApp</a>
               <button type="button" class="link-btn" data-skip="${i}">No enviar</button>
