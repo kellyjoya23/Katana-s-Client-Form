@@ -107,7 +107,7 @@ create trigger fichas_actualizada
 --   where email = 'correo@ejemplo.com';
 -- ============================================================
 revoke all on public.fichas, public.citas from anon, authenticated;
-grant select, insert, update         on public.fichas to authenticated;
+grant select, insert, update, delete on public.fichas to authenticated;
 grant select, insert, update, delete on public.citas  to authenticated;
 
 alter table public.fichas enable row level security;
@@ -137,10 +137,16 @@ create policy "Equipo edita citas" on public.citas for update to authenticated
   using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo')
   with check (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');
 create policy "Equipo elimina citas" on public.citas for delete to authenticated
-  using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');
+  using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo'
+         and estado = 'agendada'
+         and fecha >= (now() at time zone 'America/El_Salvador')::date);
 
--- Las fichas no se pueden borrar desde la app (para no perder historial).
--- Si alguna vez hace falta, se borran desde Table Editor en Supabase.
+-- Las fichas se pueden eliminar solo si no tienen citas (para limpiar errores o pruebas).
+drop policy if exists "Equipo elimina fichas sin citas" on public.fichas;
+create policy "Equipo elimina fichas sin citas" on public.fichas for delete to authenticated
+  using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo'
+         and not exists (select 1 from public.citas c where c.ficha_id = fichas.id));
+-- Las citas solo se eliminan si todavía no ocurren; las demás se cancelan (para no perder historial).
 
 -- ============================================================
 -- Avisos: registro de cada mensaje enviado (o que se decidió no enviar)
@@ -170,12 +176,15 @@ create index if not exists avisos_ficha_idx      on public.avisos (ficha_id);
 create index if not exists avisos_creado_por_idx on public.avisos (creado_por);
 
 revoke all on public.avisos from anon, authenticated;
-grant select, insert on public.avisos to authenticated;
+grant select, insert, delete on public.avisos to authenticated;
 alter table public.avisos enable row level security;
 
 drop policy if exists "Equipo ve avisos"   on public.avisos;
 drop policy if exists "Equipo crea avisos" on public.avisos;
+drop policy if exists "Equipo elimina avisos" on public.avisos;
 create policy "Equipo ve avisos" on public.avisos for select to authenticated
   using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');
 create policy "Equipo crea avisos" on public.avisos for insert to authenticated
   with check (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');
+create policy "Equipo elimina avisos" on public.avisos for delete to authenticated
+  using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');

@@ -15,6 +15,7 @@
   const TIPO_LABEL = { ficha: 'Con ficha', nuevo: 'Cliente nuevo', antes: 'Cliente de antes' };
   const ESTADO_LABEL = { agendada: 'Agendada', en_katana: "En Katana's", entregada: 'Entregada', cancelada: 'Cancelada' };
   const TRANQUILO = 'Es tranquilo';
+  const FRECUENCIAS = ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'];
 
   // ---------- Pasos ----------
   const STEPS = {
@@ -27,7 +28,8 @@
         { name: 'canal', label: '¿Por dónde agendó?', type: 'radio', options: CANALES, other: true, req: true },
         { name: 'tipo', label: "¿El perro ya tiene ficha en Katana's?", type: 'radio', options: TIPOS, stack: true, req: true,
           hint: 'Elige "Cliente de antes, sin ficha" para quienes ya venían antes de este registro.' }
-      ]
+      ],
+      after: '<div id="conflicto" class="warn" role="alert" hidden></div>'
     },
     buscar: {
       title: 'Perro con ficha',
@@ -81,8 +83,7 @@
         { name: 'esterilizado', label: '¿Está esterilizado?', type: 'radio', options: ['Sí', 'No', 'No sabe'] },
         { name: 'cumple', label: 'Cumpleaños del perro', type: 'date',
           hint: 'Si el cliente no sabe la fecha exacta, anota una aproximada.' },
-        { name: 'frecuencia', label: '¿Cada cuánto debería venir?', type: 'radio', req: true,
-          options: ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'],
+        { name: 'frecuencia', label: '¿Cada cuánto debería venir?', type: 'radio', req: true, options: FRECUENCIAS,
           hint: 'Con esto le recordamos al cliente cuando le toque volver.' }
       ]
     },
@@ -111,12 +112,18 @@
   };
   const FICHA_STEPS = ['cliente', 'perro', 'salud', 'permisos'];
 
+  // Campos que se pueden editar en una ficha (todo menos el permiso de uso de datos)
+  const EDIT_FICHA = [...STEPS.cliente.fields, ...STEPS.perro.fields, ...STEPS.salud.fields,
+    ...STEPS.permisos.fields.filter(f => f.name !== 'autoriza')];
+  const EDIT_CITA = [STEPS.cita.fields[0], STEPS.cita.fields[1], STEPS.cita.fields[2]];
+
   // ---------- Columnas del Excel (clave en la base → título) ----------
   const CITA_COLS = [
     ['creado', 'Registrada el'], ['fecha', 'Fecha de la cita'], ['hora', 'Hora'],
     ['perro', 'Perro'], ['cliente', 'Cliente'], ['whatsapp', 'WhatsApp'], ['servicios', 'Servicios'],
     ['canal', 'Agendó por'], ['tipo', 'Tipo de cliente'], ['estado', 'Estado'],
-    ['llegada', 'Llegada'], ['salida', 'Salida'], ['novedades', 'Novedades']
+    ['llegada', 'Llegada'], ['nota_llegada', 'Nota de llegada'], ['salida', 'Salida'], ['nota_salida', 'Nota de entrega'],
+    ['novedades', 'Novedades']
   ];
   const FICHA_COLS = [
     ['creada', 'Creada el'], ['actualizada', 'Actualizada el'], ['origen', 'Origen'],
@@ -146,11 +153,15 @@
   const siNo = v => v === true ? 'Sí' : v === false ? 'No' : '';
   const toBool = v => v === 'Sí' ? true : v === 'No' ? false : null;
   const pad = n => String(n).padStart(2, '0');
-  const today = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const isoLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = () => isoLocal(new Date());
+  const addDays = (iso, n) => { const d = new Date(iso + 'T12:00'); d.setDate(d.getDate() + n); return isoLocal(d); };
+  const localDate = ts => isoLocal(new Date(ts));
+  const ahoraHHMM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
   const stamp = iso => {
     const d = new Date(iso);
     if (isNaN(d)) return iso || '';
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${isoLocal(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
   const fmtDay = iso => {
     const d = new Date(iso + 'T12:00');
@@ -161,7 +172,22 @@
     return isNaN(d) ? (iso || '') : d.toLocaleDateString('es-SV', { weekday: 'long', day: 'numeric', month: 'long' });
   };
   const hhmm = t => String(t || '').slice(0, 5);
+  const hora12 = h => { const [H, M] = String(h || '').split(':').map(Number); if (isNaN(H)) return h || ''; return new Date(2000, 0, 1, H, M || 0).toLocaleTimeString('es-SV', { hour: 'numeric', minute: '2-digit' }); };
+  const horaDe = ts => ts ? new Date(ts).toLocaleTimeString('es-SV', { hour: 'numeric', minute: '2-digit' }) : '';
   const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+  const primerNombre = n => String(n || '').trim().split(/\s+/)[0] || '';
+  const listaTxt = arr => { const l = asList(arr).map(x => x.toLowerCase()); return l.length < 2 ? (l[0] || '') : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1]; };
+  const waLink = (num, texto) => `https://wa.me/503${normWa(num)}?text=${encodeURIComponent(texto)}`;
+  const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+  const diaRelativo = f => f === today() ? 'Hoy' : f === addDays(today(), 1) ? 'Mañana' : cap(fmtLong(f));
+
+  const scripts = {};
+  const loadScript = src => scripts[src] || (scripts[src] = new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = ok;
+    s.onerror = () => { delete scripts[src]; fail(new Error('No se cargó ' + src)); };
+    document.head.appendChild(s);
+  }));
 
   // ---------- Supabase ----------
   const cfg = window.KATANA_CONFIG || {};
@@ -172,6 +198,9 @@
   let fichas = [];
   let avisos = [];
   const findFicha = (wa, perro) => fichas.find(f => keyOf(f.whatsapp, f.perro) === keyOf(wa, perro));
+  const fichaDe = c => (c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : null) || findFicha(c.whatsapp, c.perro) || null;
+  const conflictos = (fecha, hora, exceptoId) => citas.filter(c =>
+    c.id !== exceptoId && c.estado !== 'cancelada' && c.fecha === fecha && c.hora === hhmm(hora));
 
   async function loadAll() {
     const desde = new Date(Date.now() - 180 * 864e5).toISOString();
@@ -223,28 +252,29 @@
     return row;
   }
 
-  // ---------- Render de campos ----------
+  // ---------- Campos (sirven para el formulario y para las ventanas de edición) ----------
   const normOpt = o => typeof o === 'string' ? { v: o, l: o } : o;
 
-  function fieldHTML(f) {
+  function fieldHTML(f, px = '') {
+    const id = `${px}f-${f.name}`;
     const opt = f.req || f.type === 'consent' ? '' : '<span class="opt">opcional</span>';
-    const hint = f.hint ? `<p class="hint" id="h-${f.name}">${f.hint}</p>` : '';
-    const err = `<p class="err" id="e-${f.name}" hidden></p>`;
-    const desc = `aria-describedby="${f.hint ? `h-${f.name} ` : ''}e-${f.name}"`;
+    const hint = f.hint ? `<p class="hint" id="${px}h-${f.name}">${f.hint}</p>` : '';
+    const err = `<p class="err" id="${px}e-${f.name}" hidden></p>`;
+    const desc = `aria-describedby="${f.hint ? `${px}h-${f.name} ` : ''}${px}e-${f.name}"`;
 
     if (['text', 'tel', 'email', 'date', 'time'].includes(f.type)) {
       const extra = f.type === 'tel' ? 'inputmode="tel" autocomplete="off" placeholder="7123-4567"'
         : f.type === 'email' ? 'autocomplete="off" placeholder="nombre@gmail.com"'
         : f.type === 'text' ? 'autocomplete="off"' : '';
       return `<div class="field" data-field="${f.name}">
-        <label for="f-${f.name}">${f.label}${opt}</label>${hint}
-        <input id="f-${f.name}" name="${f.name}" type="${f.type}" ${extra} ${f.list ? `list="dl-${f.name}"` : ''} ${desc}>
-        ${f.list ? `<datalist id="dl-${f.name}"></datalist>` : ''}${err}</div>`;
+        <label for="${id}">${f.label}${opt}</label>${hint}
+        <input id="${id}" name="${f.name}" type="${f.type}" ${extra} ${f.list ? `list="${px}dl-${f.name}"` : ''} ${desc}>
+        ${f.list ? `<datalist id="${px}dl-${f.name}"></datalist>` : ''}${err}</div>`;
     }
     if (f.type === 'textarea') {
       return `<div class="field" data-field="${f.name}">
-        <label for="f-${f.name}">${f.label}${opt}</label>${hint}
-        <textarea id="f-${f.name}" name="${f.name}" rows="3" ${desc}></textarea>${err}</div>`;
+        <label for="${id}">${f.label}${opt}</label>${hint}
+        <textarea id="${id}" name="${f.name}" rows="3" ${desc}></textarea>${err}</div>`;
     }
     if (f.type === 'consent') {
       return `<fieldset class="field" data-field="${f.name}" ${desc}>
@@ -270,37 +300,59 @@
       <section class="step" data-step="${id}" hidden>
         <h2 tabindex="-1">${s.title}</h2>
         ${s.intro ? `<p class="intro">${s.intro}</p>` : ''}
-        ${s.fields.map(fieldHTML).join('')}
+        ${s.fields.map(f => fieldHTML(f)).join('')}
         ${s.after || ''}
-        ${(s.tail || []).map(fieldHTML).join('')}
+        ${(s.tail || []).map(f => fieldHTML(f)).join('')}
       </section>`).join('');
   }
 
   // ---------- Valores y validación ----------
   const form = $('#form');
-  const otherText = name => (form.querySelector(`[name="${name}__otro"]`)?.value || '').trim();
+  const otherText = (name, root = form) => (root.querySelector(`[name="${name}__otro"]`)?.value || '').trim();
 
-  function getVal(name) {
-    const els = $$(`[name="${name}"]`, form);
+  function getVal(name, root = form) {
+    const els = $$(`[name="${name}"]`, root);
     if (!els.length) return '';
     const first = els[0];
     if (first.type === 'radio') {
       const c = els.find(i => i.checked);
       if (!c) return '';
-      return c.value === '__otro' ? otherText(name) : c.value;
+      return c.value === '__otro' ? otherText(name, root) : c.value;
     }
     if (first.type === 'checkbox') {
       return els.filter(i => i.checked)
-        .map(i => i.value === '__otro' ? otherText(name) : i.value)
+        .map(i => i.value === '__otro' ? otherText(name, root) : i.value)
         .filter(Boolean);
     }
     return first.value.trim();
   }
 
-  function checkField(f) {
-    const v = getVal(f.name);
+  function setVal(name, value, root) {
+    const els = $$(`[name="${name}"]`, root);
+    if (!els.length) return;
+    const first = els[0];
+    const other = root.querySelector(`[name="${name}__otro"]`);
+    if (first.type === 'radio' || first.type === 'checkbox') {
+      const wanted = first.type === 'radio' ? (value ? [String(value)] : []) : asList(value);
+      const known = els.map(e => e.value);
+      els.forEach(e => { e.checked = wanted.includes(e.value); });
+      const extra = wanted.filter(v => !known.includes(v));
+      if (extra.length && other) {
+        els.find(e => e.value === '__otro').checked = true;
+        other.value = extra.join(', ');
+        other.hidden = false;
+      } else if (other) {
+        other.value = ''; other.hidden = true;
+      }
+      return;
+    }
+    first.value = value ?? '';
+  }
+
+  function checkField(f, root = form) {
+    const v = getVal(f.name, root);
     const empty = Array.isArray(v) ? v.length === 0 : !v;
-    if (f.other && form.querySelector(`[name="${f.name}"][value="__otro"]:checked`) && !otherText(f.name)) {
+    if (f.other && root.querySelector(`[name="${f.name}"][value="__otro"]:checked`) && !otherText(f.name, root)) {
       return 'Escribe cuál es la otra opción.';
     }
     if (f.req && empty) {
@@ -314,33 +366,69 @@
     return '';
   }
 
-  function showErr(name, msg) {
-    const p = $(`#e-${name}`);
-    const field = form.querySelector(`[data-field="${name}"]`);
+  function showErr(name, msg, root = form, px = '') {
+    const p = $(`#${px}e-${name}`);
+    const field = root.querySelector(`[data-field="${name}"]`);
     if (!p || !field) return;
     p.textContent = msg;
     p.hidden = !msg;
     field.classList.toggle('invalid', !!msg);
   }
 
-  function validateStep(id) {
+  function validateFields(fields, root = form, px = '') {
     let first = null;
-    for (const f of allFields(id)) {
-      const msg = checkField(f);
-      showErr(f.name, msg);
+    for (const f of fields) {
+      const msg = checkField(f, root);
+      showErr(f.name, msg, root, px);
       if (msg && !first) first = f;
     }
     if (first) {
-      const el = form.querySelector(`[name="${first.name}__otro"]:not([hidden])`) && !otherText(first.name)
-        ? form.querySelector(`[name="${first.name}__otro"]`)
-        : form.querySelector(`[name="${first.name}"]`);
+      const el = root.querySelector(`[name="${first.name}__otro"]:not([hidden])`) && !otherText(first.name, root)
+        ? root.querySelector(`[name="${first.name}__otro"]`)
+        : root.querySelector(`[name="${first.name}"]`);
       el?.focus();
       el?.closest('.field')?.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     }
     return !first;
   }
 
-  // ---------- Navegación ----------
+  function bindFieldEvents(root, px = '', onInput) {
+    root.addEventListener('change', e => {
+      const t = e.target;
+      if (t.type !== 'radio' && t.type !== 'checkbox') return;
+      const other = root.querySelector(`[name="${t.name}__otro"]`);
+      if (other) {
+        const on = !!root.querySelector(`[name="${t.name}"][value="__otro"]:checked`);
+        other.hidden = !on;
+        if (on && t.value === '__otro') other.focus();
+      }
+      showErr(t.name, '', root, px);
+      onInput?.(t);
+    });
+    root.addEventListener('input', e => {
+      const name = (e.target.name || '').replace(/__otro$/, '');
+      const p = $(`#${px}e-${name}`);
+      if (p && !p.hidden) showErr(name, '', root, px);
+      onInput?.(e.target);
+    });
+  }
+
+  // Aviso de choque de horario: se muestra una vez; si se vuelve a confirmar, se agenda igual
+  let conflictoVisto = '';
+  function avisarConflicto(box, fecha, hora, exceptoId) {
+    const cf = conflictos(fecha, hora, exceptoId);
+    const clave = `${fecha} ${hora}`;
+    if (!cf.length || conflictoVisto === clave) { box.hidden = true; return false; }
+    conflictoVisto = clave;
+    box.textContent = `Ya hay ${cf.length === 1 ? 'otra cita' : cf.length + ' citas'} el ${fmtLong(fecha)} a las ${hora12(hora)}: `
+      + cf.map(c => `${c.perro}${c.cliente ? ' (' + c.cliente + ')' : ''}`).join(', ')
+      + '. Si igual quieres agendarla a esa hora, vuelve a tocar el botón.';
+    box.hidden = false;
+    box.scrollIntoView({ block: 'center' });
+    return true;
+  }
+
+  // ---------- Navegación del formulario ----------
   let idx = 0;
 
   function path() {
@@ -373,7 +461,8 @@
     e.preventDefault();
     if (saving) return;
     const p = path();
-    if (!validateStep(p[idx])) return;
+    if (!validateFields(allFields(p[idx]))) return;
+    if (p[idx] === 'cita' && avisarConflicto($('#conflicto'), getVal('fecha'), getVal('hora'))) return;
     if (idx < p.length - 1) { idx++; show(true); return; }
 
     saving = true;
@@ -400,23 +489,10 @@
 
   $('#back').addEventListener('click', () => { if (idx > 0) { idx--; show(true); } });
 
-  form.addEventListener('change', e => {
-    const t = e.target;
-    if (t.type !== 'radio' && t.type !== 'checkbox') return;
-    const other = form.querySelector(`[name="${t.name}__otro"]`);
-    if (other) {
-      const on = !!form.querySelector(`[name="${t.name}"][value="__otro"]:checked`);
-      other.hidden = !on;
-      if (on && t.value === '__otro') other.focus();
-    }
-    showErr(t.name, '');
+  bindFieldEvents(form, '', t => {
     if (t.name === 'tipo') show();
-  });
-
-  form.addEventListener('input', e => {
-    const name = e.target.name.replace(/__otro$/, '');
-    if ($(`#e-${name}`) && !$(`#e-${name}`).hidden) showErr(name, '');
-    if (e.target.name === 'wa_b' || e.target.name === 'perro_b') updateMatch();
+    if (t.name === 'fecha' || t.name === 'hora') { conflictoVisto = ''; $('#conflicto').hidden = true; }
+    if (t.name === 'wa_b' || t.name === 'perro_b') updateMatch();
   });
 
   // ---------- Buscar ficha ----------
@@ -505,13 +581,14 @@
 
     updateCount();
     showDone(cita, note);
-    enviarCorreoConfirmacion(cita);
+    const enviado = await enviarCorreoConfirmacion(cita);
+    if (enviado) $('#doneMail').textContent = enviado;
   }
 
   function showDone(c, note) {
     form.hidden = true;
     const done = $('#done');
-    $('#doneSummary').textContent = `${c.perro} · ${fmtLong(c.fecha)}, ${c.hora}`;
+    $('#doneSummary').textContent = `${c.perro} · ${fmtLong(c.fecha)}, ${hora12(c.hora)}`;
     $('#doneNote').textContent = [asList(c.servicios).join(', '), note].filter(Boolean).join('. ');
     const item = { tipo: 'confirmacion', cita: c, ficha: fichaDe(c) };
     const wa = c.fecha >= today() && normWa(c.whatsapp).length === 8;
@@ -519,7 +596,7 @@
     if (wa) {
       const a = $('#doneWa');
       a.href = waLink(c.whatsapp, mensaje(item));
-      a.onclick = () => { registrarAviso(item, 'whatsapp', false); a.textContent = 'Confirmación enviada'; };
+      a.onclick = () => { registrarAviso(item, 'whatsapp', false, false); a.textContent = 'Confirmación enviada'; };
       a.textContent = 'Enviar confirmación por WhatsApp';
     }
     $('#doneMail').textContent = '';
@@ -533,6 +610,8 @@
     $$('.other', form).forEach(o => { o.hidden = true; });
     $$('.err', form).forEach(p => { p.hidden = true; p.textContent = ''; });
     $$('.field.invalid', form).forEach(f => f.classList.remove('invalid'));
+    $('#conflicto').hidden = true;
+    conflictoVisto = '';
     idx = 0;
     $('#done').hidden = true;
     form.hidden = false;
@@ -542,12 +621,32 @@
   $('#again').addEventListener('click', resetForm);
   $('#toRegistros').addEventListener('click', () => { resetForm(); switchTab('registros'); });
 
-  // ---------- Pestañas ----------
+  // ---------- Pestañas (con flechas del teclado) ----------
+  function teclasPestanas(lista, activar) {
+    lista.addEventListener('keydown', e => {
+      const tabs = $$('[role="tab"]', lista);
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      const n = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+      if (n === undefined) return;
+      e.preventDefault();
+      const t = tabs[(n + tabs.length) % tabs.length];
+      t.focus();
+      activar(t);
+    });
+  }
+
+  function marcarPestana(tabs, activa) {
+    tabs.forEach(t => {
+      const on = t === activa;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+    });
+  }
+
   function switchTab(which) {
-    for (const t of ['hoy', 'nueva', 'registros']) {
-      $(`#tab-${t}`).setAttribute('aria-selected', String(t === which));
-      $(`#view-${t}`).hidden = t !== which;
-    }
+    marcarPestana($$('#tabs [role="tab"]'), $(`#tab-${which}`));
+    for (const t of ['hoy', 'nueva', 'registros']) $(`#view-${t}`).hidden = t !== which;
     if (which === 'registros') refresh();
     if (which === 'hoy') refreshHoy();
     window.scrollTo({ top: 0 });
@@ -555,21 +654,28 @@
   $('#tab-hoy').addEventListener('click', () => switchTab('hoy'));
   $('#tab-nueva').addEventListener('click', () => switchTab('nueva'));
   $('#tab-registros').addEventListener('click', () => switchTab('registros'));
+  teclasPestanas($('#tabs'), t => switchTab(t.id.replace('tab-', '')));
 
   // ---------- Registros ----------
   let listMode = 'citas';
+  let soloSinFrecuencia = false;
 
-  $$('.seg-btn').forEach(b => b.addEventListener('click', () => {
+  function elegirLista(b) {
     listMode = b.dataset.list;
-    $$('.seg-btn').forEach(x => x.setAttribute('aria-selected', String(x === b)));
+    marcarPestana($$('.seg-btn'), b);
     renderList();
-  }));
+  }
+  $$('.seg-btn').forEach(b => b.addEventListener('click', () => elegirLista(b)));
+  teclasPestanas($('.seg'), elegirLista);
+
+  $('#buscar').addEventListener('input', () => renderList());
+  $('#quitarFiltro').addEventListener('click', () => { soloSinFrecuencia = false; renderList(); });
 
   function updateCount() {
-    $('#count').textContent = citas.length;
     const n = pendientes().length;
     $('#countHoy').textContent = n;
     $('#countHoy').hidden = n === 0;
+    $('#tab-hoy').setAttribute('aria-label', n ? `Hoy, ${plural(n, 'mensaje', 'mensajes')} por enviar` : 'Hoy');
   }
 
   async function refresh() {
@@ -590,23 +696,45 @@
     renderList();
   }
 
+  function coincide(q, ...campos) {
+    if (!q) return true;
+    const digitos = q.replace(/\D/g, '');
+    return campos.some(c => norm(c).includes(q) || (digitos.length >= 3 && String(c || '').replace(/\D/g, '').includes(digitos)));
+  }
+
+  function accionesCita(c) {
+    const t = today();
+    const b = [];
+    if (c.estado === 'agendada' && c.fecha >= t) {
+      b.push(`<button type="button" class="link-btn" data-cita="reprogramar" data-id="${esc(c.id)}">Reprogramar</button>`);
+      b.push(`<button type="button" class="link-btn" data-cita="cancelar" data-id="${esc(c.id)}">Cancelar</button>`);
+      b.push(`<button type="button" class="link-btn danger" data-cita="eliminar" data-id="${esc(c.id)}">Eliminar</button>`);
+    }
+    if (c.estado === 'cancelada' && c.fecha >= t) {
+      b.push(`<button type="button" class="link-btn" data-cita="reactivar" data-id="${esc(c.id)}">Reactivar</button>`);
+    }
+    return b.length ? `<div class="row-links">${b.join('')}</div>` : '';
+  }
+
   function citaRow(c) {
-    const f = c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : findFicha(c.whatsapp, c.perro);
+    const f = fichaDe(c);
     const alerts = alertsFor(f).filter(a => !a.startsWith('Alergias'));
-    const estado = c.estado && c.estado !== 'agendada' ? `<li class="tag">${esc(ESTADO_LABEL[c.estado] || c.estado)}</li>` : '';
-    return `<li class="row">
-      <div class="when"><span class="d">${esc(fmtDay(c.fecha))}</span><span class="h">${esc(c.hora)}</span></div>
+    const estado = c.estado && c.estado !== 'agendada' ? `<li class="tag estado">${esc(ESTADO_LABEL[c.estado] || c.estado)}</li>` : '';
+    return `<li class="row reg-row${c.estado === 'cancelada' ? ' cancelada' : ''}">
+      <div class="when"><span class="h">${esc(hora12(c.hora))}</span></div>
       <div>
         <p class="name">${esc(c.perro)}</p>
         <p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
         <ul class="tags"><li class="tag">${esc(TIPO_LABEL[c.tipo] || c.tipo)}</li>${estado}${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>
+        ${accionesCita(c)}
       </div>
-      <button type="button" class="link-btn" data-del="${esc(c.id)}" aria-label="Eliminar la cita de ${esc(c.perro)}">Eliminar</button>
     </li>`;
   }
 
   function renderList() {
     const box = $('#list');
+    const q = norm($('#buscar').value);
+    $('#filtro').hidden = !(soloSinFrecuencia && listMode === 'fichas');
     if (listMode === 'citas') {
       if (!citas.length) {
         box.innerHTML = `<div class="empty"><p>Todavía no hay citas registradas.</p><button type="button" class="btn btn-primary" id="goNueva">Registrar una cita</button></div>`;
@@ -615,47 +743,183 @@
       }
       const t = today();
       const key = c => `${c.fecha} ${c.hora}`;
-      const prox = citas.filter(c => c.fecha >= t).sort((a, b) => key(a).localeCompare(key(b)));
-      const pas = citas.filter(c => c.fecha < t).sort((a, b) => key(b).localeCompare(key(a)));
+      const lista = citas.filter(c => coincide(q, c.perro, c.cliente, c.whatsapp));
+      if (!lista.length) { box.innerHTML = `<div class="empty"><p>Ninguna cita coincide con "${esc($('#buscar').value)}".</p></div>`; return; }
+      const prox = lista.filter(c => c.fecha >= t).sort((a, b) => key(a).localeCompare(key(b)));
+      const pas = lista.filter(c => c.fecha < t).sort((a, b) => key(b).localeCompare(key(a)));
+      const dias = [...new Set(prox.map(c => c.fecha))];
       box.innerHTML =
-        (prox.length ? `<h3 class="group-title">Próximas</h3><ul class="rows">${prox.map(citaRow).join('')}</ul>` : '') +
-        (pas.length ? `<h3 class="group-title">Pasadas</h3><ul class="rows">${pas.map(citaRow).join('')}</ul>` : '');
+        dias.map(d => `<h3 class="group-title">${esc(diaRelativo(d))}${d > addDays(t, 1) ? '' : ` · <span class="sub-date">${esc(fmtDay(d))}</span>`}</h3>
+          <ul class="rows">${prox.filter(c => c.fecha === d).map(citaRow).join('')}</ul>`).join('') +
+        (pas.length ? `<h3 class="group-title">Pasadas</h3><ul class="rows">${pas.map(c => citaRow(c).replace('<span class="h">', `<span class="d">${esc(fmtDay(c.fecha))}</span><span class="h">`)).join('')}</ul>` : '');
       return;
     }
     if (!fichas.length) {
       box.innerHTML = `<div class="empty"><p>Las fichas se crean al registrar una cita de un cliente nuevo o de antes.</p></div>`;
       return;
     }
-    const sorted = [...fichas].sort((a, b) => norm(a.perro).localeCompare(norm(b.perro)));
+    const sorted = [...fichas]
+      .filter(f => !soloSinFrecuencia || !f.frecuencia)
+      .filter(f => coincide(q, f.perro, f.nombre, f.whatsapp))
+      .sort((a, b) => norm(a.perro).localeCompare(norm(b.perro)));
+    if (!sorted.length) { box.innerHTML = `<div class="empty"><p>Ninguna ficha coincide${q ? ` con "${esc($('#buscar').value)}"` : ''}.</p></div>`; return; }
     box.innerHTML = `<ul class="rows">${sorted.map(f => {
-      const visitas = citas.filter(c => c.ficha_id === f.id);
-      const ultima = visitas.map(c => c.fecha).sort().pop();
+      const visitas = citas.filter(c => c.ficha_id === f.id && c.estado !== 'cancelada');
+      const ultima = visitas.map(c => c.fecha).filter(d => d <= today()).sort().pop();
       const alerts = alertsFor(f);
       return `<li class="row ficha"><div>
         <p class="name">${esc(f.perro)}</p>
         <p class="meta">${esc([f.raza, f.tamano].filter(Boolean).join(' · '))}</p>
         <p class="meta">${esc(f.nombre)} · ${esc(f.whatsapp)}</p>
-        <p class="meta">${plural(visitas.length, 'cita', 'citas')}${ultima ? ` · última: ${esc(fmtDay(ultima))}` : ''}</p>
+        <p class="meta">${plural(visitas.length, 'cita', 'citas')}${ultima ? ` · última: ${esc(fmtDay(ultima))}` : ''} · ${f.frecuencia ? esc(f.frecuencia.toLowerCase()) : '<strong>sin frecuencia</strong>'}</p>
         ${alerts.length ? `<ul class="tags">${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>` : ''}
+        <div class="row-links"><button type="button" class="link-btn" data-ficha="${esc(f.id)}">Editar ficha</button></div>
       </div></li>`;
     }).join('')}</ul>`;
   }
 
-  $('#list').addEventListener('click', async e => {
-    const id = e.target.closest('[data-del]')?.dataset.del;
-    if (!id) return;
+  // Acciones sobre citas (en Registros y en Hoy)
+  async function accionCita(act, id) {
     const c = citas.find(x => x.id === id);
     if (!c) return;
-    if (!confirm(`¿Eliminar la cita de ${c.perro} del ${fmtDay(c.fecha)}, ${c.hora}? No se puede deshacer.`)) return;
-    const { error } = await sb.from('citas').delete().eq('id', id);
-    if (error) { toast('No se pudo eliminar la cita. Revisa tu conexión e intenta de nuevo.'); return; }
-    citas = citas.filter(x => x.id !== id);
-    updateCount();
-    renderRegistros();
-    toast('Cita eliminada');
+    if (act === 'reprogramar') { abrirReprogramar(c); return; }
+    if (act === 'cancelar') {
+      if (!confirm(`¿Cancelar la cita de ${c.perro} del ${fmtDay(c.fecha)}, ${hora12(c.hora)}? Queda en el historial como cancelada.`)) return;
+      await actualizarCita(id, { estado: 'cancelada' }, `Cita de ${c.perro} cancelada`);
+      return;
+    }
+    if (act === 'reactivar') {
+      await actualizarCita(id, { estado: 'agendada' }, `Cita de ${c.perro} reactivada`);
+      return;
+    }
+    if (act === 'eliminar') {
+      if (!confirm(`¿Eliminar la cita de ${c.perro} del ${fmtDay(c.fecha)}, ${hora12(c.hora)}? Úsalo solo si fue un error al registrarla; no se puede deshacer.`)) return;
+      const { data, error } = await sb.from('citas').delete().eq('id', id).select('id');
+      if (error || !data?.length) { toast('No se pudo eliminar la cita. Si ya pasó, cancélala en lugar de eliminarla.'); return; }
+      citas = citas.filter(x => x.id !== id);
+      avisos = avisos.filter(a => a.cita_id !== id);
+      updateCount(); renderRegistros(); renderHoy();
+      toast('Cita eliminada');
+    }
+  }
+
+  $('#list').addEventListener('click', e => {
+    const b = e.target.closest('[data-cita]');
+    if (b) { accionCita(b.dataset.cita, b.dataset.id); return; }
+    const f = e.target.closest('[data-ficha]');
+    if (f) abrirEditarFicha(fichas.find(x => x.id === f.dataset.ficha));
   });
 
-  // ---------- Excel ----------
+  // ---------- Ventana para reprogramar citas y editar fichas ----------
+  const sheet = $('#sheet');
+  const sheetForm = $('#sheetForm');
+  let sheetModo = null;   // { tipo: 'cita' | 'ficha', obj }
+
+  function abrirSheet(titulo, campos, valores, modo) {
+    sheetModo = { ...modo, campos };
+    $('#sheetTitle').textContent = titulo;
+    $('#sheetBody').innerHTML = campos.map(f => fieldHTML(f, 'x')).join('')
+      + (modo.tipo === 'cita' ? '<div id="xconflicto" class="warn" role="alert" hidden></div>' : '');
+    for (const f of campos) setVal(f.name, valores[f.name], sheetForm);
+    $('#sheetErr').hidden = true;
+    conflictoVisto = '';
+    const sinCitas = modo.tipo === 'ficha' && !citas.some(c => c.ficha_id === modo.obj.id);
+    $('#sheetDelete').hidden = !sinCitas;
+    $('#sheetSave').disabled = false;
+    $('#sheetSave').textContent = 'Guardar cambios';
+    sheet.showModal();
+    sheet.querySelector('input, textarea')?.focus();
+  }
+
+  bindFieldEvents(sheetForm, 'x', t => {
+    if (t.name === 'fecha' || t.name === 'hora') { conflictoVisto = ''; const b = $('#xconflicto'); if (b) b.hidden = true; }
+  });
+  $('#sheetClose').addEventListener('click', () => sheet.close());
+  $('#sheetCancel').addEventListener('click', () => sheet.close());
+
+  function abrirReprogramar(c) {
+    abrirSheet(`Reprogramar la cita de ${c.perro}`, EDIT_CITA, { fecha: c.fecha, hora: c.hora, servicios: c.servicios }, { tipo: 'cita', obj: c });
+  }
+
+  function abrirEditarFicha(f) {
+    if (!f) return;
+    const valores = { ...f, fotos: siNo(f.fotos), recordatorios: siNo(f.recordatorios) };
+    abrirSheet(`Ficha de ${f.perro}`, EDIT_FICHA, valores, { tipo: 'ficha', obj: f });
+  }
+
+  function sheetError(msg) {
+    const p = $('#sheetErr');
+    p.textContent = msg;
+    p.hidden = !msg;
+    if (msg) p.scrollIntoView({ block: 'center' });
+  }
+
+  sheetForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!sheetModo || !validateFields(sheetModo.campos, sheetForm, 'x')) return;
+    const btn = $('#sheetSave');
+    sheetError('');
+    if (sheetModo.tipo === 'cita') {
+      const c = sheetModo.obj;
+      const fecha = getVal('fecha', sheetForm), hora = getVal('hora', sheetForm);
+      if (avisarConflicto($('#xconflicto'), fecha, hora, c.id)) return;
+      btn.disabled = true; btn.textContent = 'Guardando…';
+      const cambioHorario = fecha !== c.fecha || hora !== c.hora;
+      const ok = await actualizarCita(c.id, { fecha, hora, servicios: getVal('servicios', sheetForm) }, null);
+      if (!ok) { btn.disabled = false; btn.textContent = 'Guardar cambios'; sheetError('No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.'); return; }
+      sheet.close();
+      if (cambioHorario) {
+        // La confirmación anterior ya no sirve: se borra para que aparezca de nuevo en Hoy y salga otro correo
+        await sb.from('avisos').delete().eq('cita_id', c.id).in('tipo', ['confirmacion', 'dia_antes']);
+        avisos = avisos.filter(a => !(a.cita_id === c.id && ['confirmacion', 'dia_antes'].includes(a.tipo)));
+        updateCount(); renderRegistros(); renderHoy();
+        const correo = await enviarCorreoConfirmacion(c);
+        toast(`Cita reprogramada (${fmtDay(fecha)}, ${hora12(hora)}). Envía la nueva confirmación desde Hoy.${correo ? ' El correo ya salió.' : ''}`);
+      } else {
+        toast('Cita actualizada');
+      }
+      return;
+    }
+    // Ficha
+    const f = sheetModo.obj;
+    const v = n => getVal(n, sheetForm);
+    const data = {
+      nombre: v('nombre'), whatsapp: fmtWa(v('whatsapp')), correo: v('correo') || null, colonia: v('colonia') || null,
+      contacto: v('contacto'), perro: v('perro'), raza: v('raza'), tamano: v('tamano'), pelo: v('pelo'), sexo: v('sexo'),
+      esterilizado: v('esterilizado') || null, cumple: v('cumple') || null, frecuencia: v('frecuencia') || null,
+      vacunas: v('vacunas'), alergias: v('alergias') || null, caracter: v('caracter'), notas: v('notas') || null,
+      fotos: toBool(v('fotos')), recordatorios: toBool(v('recordatorios'))
+    };
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    const { data: row, error } = await sb.from('fichas').update(data).eq('id', f.id).select().single();
+    if (error) {
+      btn.disabled = false; btn.textContent = 'Guardar cambios';
+      sheetError(error.code === '23505'
+        ? `Ya hay otro perro llamado ${data.perro} con el WhatsApp ${data.whatsapp}.`
+        : 'No se pudo guardar la ficha. Revisa tu conexión e intenta de nuevo.');
+      return;
+    }
+    Object.assign(f, row);
+    // Las citas guardan una copia del nombre y el número: se actualizan para que todo coincida
+    await sb.from('citas').update({ perro: row.perro, cliente: row.nombre, whatsapp: row.whatsapp }).eq('ficha_id', f.id);
+    citas.filter(c => c.ficha_id === f.id).forEach(c => Object.assign(c, { perro: row.perro, cliente: row.nombre, whatsapp: row.whatsapp }));
+    sheet.close();
+    updateCount(); renderRegistros(); renderHoy();
+    toast(`Ficha de ${row.perro} guardada`);
+  });
+
+  $('#sheetDelete').addEventListener('click', async () => {
+    const f = sheetModo?.obj;
+    if (!f || !confirm(`¿Eliminar la ficha de ${f.perro}? Solo se puede porque no tiene citas. No se puede deshacer.`)) return;
+    const { data, error } = await sb.from('fichas').delete().eq('id', f.id).select('id');
+    if (error || !data?.length) { sheetError('No se pudo eliminar. Si la ficha ya tiene citas, no se puede borrar.'); return; }
+    fichas = fichas.filter(x => x.id !== f.id);
+    sheet.close();
+    updateCount(); renderRegistros(); renderHoy();
+    toast(`Ficha de ${f.perro} eliminada`);
+  });
+
+  // ---------- Excel (la librería se carga solo al exportar) ----------
   function toRow(obj, cols) {
     return cols.map(([k]) => {
       let v = obj[k];
@@ -668,7 +932,7 @@
     });
   }
 
-  function sheet(rows, cols) {
+  function sheetXlsx(rows, cols) {
     const ws = XLSX.utils.aoa_to_sheet([cols.map(c => c[1]), ...rows.map(r => toRow(r, cols))]);
     ws['!cols'] = cols.map(([k, label]) => {
       const longest = Math.max(label.length, ...rows.map(r => String(toRow(r, [[k]])[0]).length));
@@ -679,17 +943,23 @@
   }
 
   $('#export').addEventListener('click', async () => {
-    if (!window.XLSX) { toast('No se pudo cargar el generador de Excel. Revisa tu conexión e intenta de nuevo.'); return; }
-    try { await loadAll(); } catch { toast('No se pudieron cargar los datos más recientes. Revisa tu conexión.'); return; }
-    if (!citas.length && !fichas.length) { toast('Todavía no hay registros para descargar.'); return; }
-    const sortedCitas = [...citas].sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
-    const sortedFichas = [...fichas].sort((a, b) => norm(a.perro).localeCompare(norm(b.perro)));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, sheet(sortedCitas, CITA_COLS), 'Citas');
-    XLSX.utils.book_append_sheet(wb, sheet(sortedFichas, FICHA_COLS), 'Fichas');
-    XLSX.writeFile(wb, `Katanas_Grooming_Citas_y_Clientes_${today()}.xlsx`);
-    renderRegistros();
-    toast('Excel descargado');
+    const btn = $('#export');
+    btn.disabled = true; btn.textContent = 'Preparando…';
+    try {
+      try { await loadScript('vendor/xlsx-mini-0.18.5.min.js'); } catch { toast('No se pudo preparar el Excel. Revisa tu conexión e intenta de nuevo.'); return; }
+      try { await loadAll(); } catch { toast('No se pudieron cargar los datos más recientes. Revisa tu conexión.'); return; }
+      if (!citas.length && !fichas.length) { toast('Todavía no hay registros para descargar.'); return; }
+      const sortedCitas = [...citas].sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
+      const sortedFichas = [...fichas].sort((a, b) => norm(a.perro).localeCompare(norm(b.perro)));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedCitas, CITA_COLS), 'Citas');
+      XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedFichas, FICHA_COLS), 'Fichas');
+      XLSX.writeFile(wb, `Katanas_Grooming_Citas_y_Clientes_${today()}.xlsx`);
+      renderRegistros();
+      toast('Excel descargado');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Descargar Excel';
+    }
   });
 
   // ---------- Registros guardados solo en este dispositivo (versión anterior) ----------
@@ -761,15 +1031,6 @@
   const TIPO_AVISO = { listo: 'Listo para recoger', dia_antes: 'Cita de mañana', confirmacion: 'Confirmación de cita', toca_volver: 'Le toca volver' };
   const ORDEN_AVISO = { listo: 0, dia_antes: 1, confirmacion: 2, toca_volver: 3 };
 
-  const addDays = (iso, n) => { const d = new Date(iso + 'T12:00'); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
-  const localDate = ts => { const d = new Date(ts); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
-  const hora12 = h => { const [H, M] = String(h || '').split(':').map(Number); if (isNaN(H)) return h || ''; return new Date(2000, 0, 1, H, M || 0).toLocaleTimeString('es-SV', { hour: 'numeric', minute: '2-digit' }); };
-  const horaDe = ts => ts ? new Date(ts).toLocaleTimeString('es-SV', { hour: 'numeric', minute: '2-digit' }) : '';
-  const primerNombre = n => String(n || '').trim().split(/\s+/)[0] || '';
-  const listaTxt = arr => { const l = asList(arr).map(x => x.toLowerCase()); return l.length < 2 ? (l[0] || '') : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1]; };
-  const waLink = (num, texto) => `https://wa.me/503${normWa(num)}?text=${encodeURIComponent(texto)}`;
-  const fichaDe = c => (c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : null) || findFicha(c.whatsapp, c.perro) || null;
-
   function mensaje(item) {
     const c = item.cita, f = item.ficha;
     const nombre = primerNombre(c?.cliente || f?.nombre);
@@ -778,7 +1039,9 @@
       return `${hola} Te confirmamos la cita de ${c.perro} en Katana's Grooming: ${fmtLong(c.fecha)} a las ${hora12(c.hora)}, para ${listaTxt(c.servicios)}. Si necesitas cambiarla, escríbenos por aquí. ¡Nos vemos!`;
     }
     if (item.tipo === 'dia_antes') {
-      return `${hola} Te recordamos que mañana, ${fmtLong(c.fecha)}, a las ${hora12(c.hora)} esperamos a ${c.perro} en Katana's Grooming. Si no pueden venir, avísanos por aquí para darle el espacio a otro peludo.`;
+      return item.atrasado
+        ? `${hola} Te recordamos que hoy a las ${hora12(c.hora)} esperamos a ${c.perro} en Katana's Grooming. Si no pueden venir, avísanos por aquí para darle el espacio a otro peludo.`
+        : `${hola} Te recordamos que mañana, ${fmtLong(c.fecha)}, a las ${hora12(c.hora)} esperamos a ${c.perro} en Katana's Grooming. Si no pueden venir, avísanos por aquí para darle el espacio a otro peludo.`;
     }
     if (item.tipo === 'listo') {
       return `${hola} ${c.perro} ya está listo y te espera en Katana's Grooming.`;
@@ -790,15 +1053,18 @@
     tipo === 'toca_volver' ? a.ficha_id === item.ficha.id && a.ref_fecha === item.ref : a.cita_id === item.cita.id));
 
   function pendientes() {
-    const t = today(), manana = addDays(t, 1);
+    const t = today(), manana = addDays(t, 1), ahora = ahoraHHMM();
     const out = [];
     for (const c of citas) {
       if (c.estado === 'cancelada' || normWa(c.whatsapp).length !== 8) continue;
       const f = fichaDe(c);
-      const item = tipo => ({ tipo, cita: c, ficha: f });
+      const item = (tipo, extra) => ({ tipo, cita: c, ficha: f, ...extra });
       if (c.estado === 'agendada' && c.fecha >= t && !avisoDe('confirmacion', 'whatsapp', { cita: c })) out.push(item('confirmacion'));
-      if (c.estado === 'agendada' && c.fecha === manana && localDate(c.creado) < t && f?.recordatorios !== false
-        && !avisoDe('dia_antes', 'whatsapp', { cita: c })) out.push(item('dia_antes'));
+      const pideRecordatorio = c.estado === 'agendada' && localDate(c.creado) < t && f?.recordatorios !== false
+        && !avisoDe('dia_antes', 'whatsapp', { cita: c });
+      if (pideRecordatorio && c.fecha === manana) out.push(item('dia_antes'));
+      // Si ayer no se envió el recordatorio y la cita es hoy más tarde, todavía sirve
+      if (pideRecordatorio && c.fecha === t && localDate(c.creado) < addDays(t, -1) && c.hora > ahora) out.push(item('dia_antes', { atrasado: true }));
       if (c.estado === 'entregada' && c.salida && localDate(c.salida) === t && !avisoDe('listo', 'whatsapp', { cita: c })) out.push(item('listo'));
     }
     for (const f of fichas) {
@@ -814,7 +1080,7 @@
     return out.sort((a, b) => ORDEN_AVISO[a.tipo] - ORDEN_AVISO[b.tipo]);
   }
 
-  async function registrarAviso(item, canal, omitido) {
+  async function registrarAviso(item, canal, omitido, conDeshacer = true) {
     const row = {
       tipo: item.tipo, canal, omitido,
       cita_id: item.cita?.id || null,
@@ -825,31 +1091,47 @@
     const local = { ...row, creado: new Date().toISOString() };
     avisos.push(local);
     updateCount();
+    if (!$('#view-hoy').hidden) renderHoy();
     const { data, error } = await sb.from('avisos').insert(row).select().single();
     if (error && error.code !== '23505') {
       avisos = avisos.filter(a => a !== local);
-      toast('No se pudo marcar el mensaje como enviado. Revisa tu conexión.');
+      toast('No se pudo marcar el mensaje. Revisa tu conexión.');
     } else if (data) {
       avisos[avisos.indexOf(local)] = data;
+      if (conDeshacer) {
+        const perro = item.cita?.perro || item.ficha?.perro;
+        toast(omitido ? `${TIPO_AVISO[item.tipo]} de ${perro}: no se enviará` : `${TIPO_AVISO[item.tipo]} de ${perro}: marcado como enviado`,
+          { accion: 'Deshacer', fn: () => deshacerAviso(data) });
+      }
     }
     updateCount();
     if (!$('#view-hoy').hidden) renderHoy();
   }
 
+  async function deshacerAviso(row) {
+    const { error } = await sb.from('avisos').delete().eq('id', row.id);
+    if (error) { toast('No se pudo deshacer. Revisa tu conexión.'); return; }
+    avisos = avisos.filter(a => a.id !== row.id);
+    updateCount();
+    renderHoy();
+    toast('Listo: el mensaje volvió a la lista');
+  }
+
+  // Devuelve un texto para mostrar si el correo salió, o '' si no aplica
   async function enviarCorreoConfirmacion(cita) {
     const f = fichaDe(cita);
-    if (!f?.correo || cita.fecha < today()) return;
-    const p = $('#doneMail');
+    if (!f?.correo || cita.fecha < today()) return '';
     try {
       const { data, error } = await sb.functions.invoke('avisos-correo', { body: { modo: 'confirmacion', cita_id: cita.id } });
       if (error) throw error;
       if (data?.enviados > 0) {
-        p.textContent = `También le enviamos la confirmación a ${f.correo}.`;
         avisos.push({ tipo: 'confirmacion', canal: 'correo', cita_id: cita.id, creado: new Date().toISOString() });
+        return `También le enviamos la confirmación a ${f.correo}.`;
       }
+      return '';
     } catch (err) {
       console.error(err);
-      p.textContent = 'El correo de confirmación no salió ahora; se intentará de nuevo mañana a las 8:00 a. m.';
+      return 'El correo de confirmación no salió ahora; se intentará de nuevo mañana a las 8:00 a. m.';
     }
   }
 
@@ -881,6 +1163,7 @@
     } else if (c.estado === 'agendada') {
       acciones = `<div class="row-actions">
         <button type="button" class="btn btn-primary btn-sm" data-act="recibir" data-id="${esc(c.id)}">Recibir</button>
+        <button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}">Reprogramar</button>
         <button type="button" class="link-btn" data-act="novino" data-id="${esc(c.id)}">No vino</button></div>`;
     } else if (c.estado === 'en_katana') {
       acciones = `<div class="row-actions"><button type="button" class="btn btn-primary btn-sm" data-act="entregar" data-id="${esc(c.id)}">Entregar</button></div>`;
@@ -900,29 +1183,35 @@
     </li>`;
   }
 
+  let pendLista = [];
+
   function renderHoy() {
     if (!$('#hoyFecha')) return;
-    const t = today();
+    const t = today(), manana = addDays(t, 1);
     $('#hoyFecha').textContent = fmtLong(t);
+
+    const sinFrec = fichas.filter(f => !f.frecuencia).length;
+    $('#sinFrec').hidden = sinFrec === 0;
+    $('#sinFrecText').textContent = `${plural(sinFrec, 'perro no tiene', 'perros no tienen')} frecuencia de visita, así que no ${sinFrec === 1 ? 'recibirá' : 'recibirán'} "Le toca volver".`;
+
     const deHoy = citas.filter(c => c.estado !== 'cancelada' && (c.fecha === t || c.estado === 'en_katana'))
       .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
     $('#hoyCitas').innerHTML = deHoy.length
       ? `<ul class="rows">${deHoy.map(hoyRow).join('')}</ul>`
       : `<div class="empty"><p>No hay citas para hoy.</p></div>`;
 
-    const items = pendientes();
-    window.__katanaPendientes = items;
-    $('#hoyMensajes').innerHTML = items.length
-      ? `<ul class="rows">${items.map((it, i) => {
+    pendLista = pendientes();
+    $('#hoyMensajes').innerHTML = pendLista.length
+      ? `<ul class="rows">${pendLista.map((it, i) => {
           const c = it.cita, f = it.ficha;
           const perro = c?.perro || f?.perro;
           const cliente = c?.cliente || f?.nombre || 'Cliente sin ficha';
           const num = c?.whatsapp || f?.whatsapp;
-          const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}`
-            : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
+          const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}` : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
+          const etiqueta = it.atrasado ? 'Recordatorio atrasado · la cita es hoy' : TIPO_AVISO[it.tipo];
           const correo = avisoDe(it.tipo, 'correo', it) ? '<p class="note">El correo ya salió.</p>' : '';
-          return `<li class="row msg tipo-${it.tipo}"><div>
-            <p class="msg-type">${esc(TIPO_AVISO[it.tipo])}</p>
+          return `<li class="row msg tipo-${it.tipo}${it.atrasado ? ' atrasado' : ''}"><div>
+            <p class="msg-type">${esc(etiqueta)}</p>
             <p class="name">${esc(perro)}</p>
             <p class="meta">${esc(cliente)} · ${esc(fmtWa(num))} · ${esc(extra)}</p>
             <p class="msg-text">${esc(mensaje(it))}</p>
@@ -933,6 +1222,14 @@
             </div></div></li>`;
         }).join('')}</ul>`
       : `<div class="empty"><p>No hay mensajes pendientes. Aquí aparecen las confirmaciones, los avisos de la víspera, los perros que ya deben volver y los que están listos para recoger.</p></div>`;
+
+    const deManana = citas.filter(c => c.fecha === manana && c.estado !== 'cancelada').sort((a, b) => a.hora.localeCompare(b.hora));
+    $('#hoyManana').innerHTML = deManana.length
+      ? `<ul class="rows compact">${deManana.map(c => `<li class="row"><div class="when"><span class="h">${esc(hora12(c.hora))}</span></div>
+          <div><p class="name">${esc(c.perro)}</p><p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
+          <div class="row-links"><button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}">Reprogramar</button></div></div></li>`).join('')}</ul>`
+      : `<div class="empty"><p>No hay citas para mañana.</p></div>`;
+
     if (abierto) $(`#nota-${CSS.escape(abierto.id)}`)?.focus();
   }
 
@@ -944,16 +1241,24 @@
     abierto = null;
     updateCount();
     renderHoy();
+    if (!$('#view-registros').hidden) renderRegistros();
     if (ok) toast(ok);
     return true;
   }
 
-  $('#hoyCitas').addEventListener('click', async e => {
+  $('#sinFrecBtn').addEventListener('click', () => {
+    soloSinFrecuencia = true;
+    switchTab('registros');
+    elegirLista($('.seg-btn[data-list="fichas"]'));
+  });
+
+  $('#view-hoy').addEventListener('click', async e => {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const id = b.dataset.id, act = b.dataset.act;
     const c = citas.find(x => x.id === id);
     if (!c) return;
+    if (act === 'reprogramar') { abrirReprogramar(c); return; }
     if (act === 'recibir' || act === 'entregar') { abierto = { id, act }; renderHoy(); return; }
     if (act === 'cerrar') { abierto = null; renderHoy(); return; }
     if (act === 'novino') {
@@ -971,9 +1276,8 @@
   $('#hoyMensajes').addEventListener('click', e => {
     const send = e.target.closest('[data-send]');
     const skip = e.target.closest('[data-skip]');
-    const items = window.__katanaPendientes || [];
-    if (send) { const it = items[Number(send.dataset.send)]; if (it) setTimeout(() => registrarAviso(it, 'whatsapp', false), 300); }
-    if (skip) { const it = items[Number(skip.dataset.skip)]; if (it) registrarAviso(it, 'whatsapp', true); }
+    if (send) { const it = pendLista[Number(send.dataset.send)]; if (it) setTimeout(() => registrarAviso(it, 'whatsapp', false), 300); }
+    if (skip) { const it = pendLista[Number(skip.dataset.skip)]; if (it) registrarAviso(it, 'whatsapp', true); }
   });
 
   // ---------- Sesión ----------
@@ -985,7 +1289,8 @@
   function showView(which) {
     $('#loading').hidden = true;
     const logged = which === 'app';
-    $('#view-login').hidden = logged;
+    $('#view-login').hidden = which !== 'login';
+    $('#view-reset').hidden = which !== 'reset';
     $('#tabs').hidden = !logged;
     $('#logout').hidden = !logged;
     if (logged) switchTab('hoy');
@@ -996,6 +1301,7 @@
     const p = $('#loginErr');
     p.textContent = msg;
     p.hidden = !msg;
+    if (msg) $('#loginOk').hidden = true;
   }
 
   $('#loginForm').addEventListener('submit', async e => {
@@ -1018,15 +1324,53 @@
     }
   });
 
+  $('#forgot').addEventListener('click', async () => {
+    if (!sb) return;
+    const email = $('#loginEmail').value.trim();
+    if (!EMAIL.test(email)) { loginError('Escribe tu correo arriba y vuelve a tocar "Olvidé mi contraseña".'); $('#loginEmail').focus(); return; }
+    loginError('');
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error && !/rate|seconds/i.test(error.message)) { loginError('No se pudo enviar el correo. Revisa tu conexión e intenta de nuevo.'); return; }
+    const ok = $('#loginOk');
+    ok.textContent = error
+      ? 'Ya te enviamos un enlace hace poco. Espera un minuto antes de pedir otro.'
+      : `Si ${email} tiene cuenta, te llegará un correo con un enlace para crear una contraseña nueva. Revisa también la carpeta de spam.`;
+    ok.hidden = false;
+  });
+
+  $('#resetForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const p1 = $('#newPass').value, p2 = $('#newPass2').value;
+    const err = $('#resetErr');
+    const fail = m => { err.textContent = m; err.hidden = false; };
+    if (p1.length < 8) return fail('La contraseña debe tener al menos 8 caracteres.');
+    if (p1 !== p2) return fail('Las contraseñas no coinciden. Escríbelas de nuevo.');
+    err.hidden = true;
+    const btn = $('#resetBtn');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    const { data, error } = await sb.auth.updateUser({ password: p1 });
+    btn.disabled = false; btn.textContent = 'Guardar contraseña';
+    if (error) return fail(/same|different/i.test(error.message)
+      ? 'Usa una contraseña distinta a la anterior.'
+      : 'No se pudo guardar. El enlace puede haber vencido: pide otro desde "Olvidé mi contraseña".');
+    recuperando = false;
+    history.replaceState(null, '', location.pathname);
+    $('#newPass').value = ''; $('#newPass2').value = '';
+    toast('Contraseña actualizada');
+    started = false;
+    onSession(data?.user ? (await sb.auth.getSession()).data.session : null);
+  });
+
   $('#logout').addEventListener('click', async () => {
     await sb.auth.signOut();
   });
 
   let started = false;
+  let recuperando = /type=recovery/.test(location.hash);
   async function onSession(session) {
     if (!session) {
       started = false;
-      citas = []; fichas = [];
+      citas = []; fichas = []; avisos = [];
       $('#loginPass').value = '';
       showView('login');
       return;
@@ -1041,14 +1385,19 @@
     }
   }
 
-  // ---------- Aviso ----------
+  // ---------- Aviso (con acción opcional, como "Deshacer") ----------
   let toastTimer;
-  function toast(msg) {
+  function toast(msg, opts = {}) {
     const t = $('#toast');
-    t.textContent = msg;
+    const btn = $('#toastBtn');
+    $('#toastText').textContent = msg;
+    btn.hidden = !opts.accion;
+    btn.textContent = opts.accion || '';
+    btn.onclick = opts.fn ? () => { t.classList.remove('show'); opts.fn(); } : null;
+    t.classList.toggle('has-action', !!opts.accion);
     t.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), 3600);
+    toastTimer = setTimeout(() => t.classList.remove('show'), opts.accion ? 8000 : 3600);
   }
 
   // ---------- Inicio ----------
@@ -1060,6 +1409,10 @@
       ? 'No se pudo conectar con la base de datos. Revisa tu conexión y recarga la página.'
       : 'Falta conectar la base de datos: completa config.js con los datos de Supabase.');
   } else {
-    sb.auth.onAuthStateChange((_event, session) => { onSession(session); });
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') { recuperando = true; showView('reset'); $('#newPass').focus(); return; }
+      if (recuperando && session) { showView('reset'); return; }
+      onSession(session);
+    });
   }
 })();

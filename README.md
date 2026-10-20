@@ -10,6 +10,9 @@ App web para que el equipo de Katana's registre cada cita y, de paso, arme la ba
 | `styles.css` | Estilos con el design system v3 (paleta y tipografías) |
 | `app.js` | Inicio de sesión, formulario, registros y Excel |
 | `config.js` | Conexión con Supabase (aquí van la URL y la clave pública) |
+| `vendor/` | Librerías incluidas en el sitio: supabase-js 2.118.0 y SheetJS 0.18.5 (versión mini, solo para crear el Excel) |
+| `icons/`, `manifest.webmanifest` | Ícono y nombre de la app al agregarla a la pantalla de inicio |
+| `vercel.json` | Encabezados de seguridad (política de contenido, bloqueo de iframes) |
 | `supabase/schema.sql` | Tablas y reglas de seguridad de la base de datos |
 | `supabase/functions/avisos-correo/index.ts` | Función que envía los correos automáticos |
 | `supabase/revision_diaria.sql` | Tarea diaria (8:00 a. m.) que dispara los correos |
@@ -40,11 +43,18 @@ La app pide iniciar sesión porque el enlace es público y la base tiene datos p
 
 Para quitarle el acceso a alguien, borra su usuario en **Authentication → Users**.
 
-## 3. Conexión de la app
+## 3. Recuperar contraseña (una sola vez)
+
+Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → **Authentication → URL Configuration**:
+
+- **Site URL:** `https://katana-s-client-form.vercel.app`
+- **Redirect URLs:** agrega `https://katana-s-client-form.vercel.app/**`
+
+## 4. Conexión de la app
 
 `config.js` ya tiene la URL y la clave pública del proyecto. La clave *anon* puede ir en el código porque la seguridad la ponen las reglas de la base. **Nunca** pongas ahí la clave *service_role* ni una clave *secret*.
 
-## 4. Publicar en Vercel
+## 5. Publicar en Vercel
 
 1. Crea un repositorio en GitHub (por ejemplo `katana-registro`) y sube los archivos, con la carpeta `supabase`.
 2. En vercel.com, **Add New → Project** e importa el repositorio.
@@ -54,18 +64,24 @@ Para quitarle el acceso a alguien, borra su usuario en **Authentication → User
 ## Cómo funciona
 
 - **Hoy** (se abre al iniciar sesión):
-  - **Citas de hoy:** cada perro con su estado. **Recibir** guarda la hora de llegada y una nota de cómo llegó y qué dejó (nudos, heridas, pulgas; collar, correa). **Entregar** guarda la hora de salida y lo que se le hizo. **No vino** marca la cita como cancelada.
-  - **Mensajes por enviar:** la app arma cada mensaje y abre el WhatsApp del cliente con el texto listo; quien atiende solo toca enviar. **No enviar** lo quita de la lista. Cada mensaje queda registrado para no repetirlo.
+  - **Citas de hoy:** **Recibir** guarda la hora de llegada y cómo llegó el perro; **Entregar**, la hora de salida y lo que se le hizo; **Reprogramar** cambia fecha u hora; **No vino** la marca como cancelada.
+  - **Mensajes por enviar:** la app arma cada mensaje y abre el WhatsApp del cliente con el texto listo. Al tocar **Enviar por WhatsApp** o **No enviar** aparece **Deshacer** por unos segundos, por si no se llegó a mandar.
+  - **Mañana:** las citas del día siguiente, para preparar la agenda.
+  - Si hay perros sin frecuencia de visita, un aviso lleva directo a completar sus fichas.
 - **Mensajes que se preparan solos:**
   | Mensaje | Cuándo | A quién |
   | --- | --- | --- |
-  | Confirmación de cita | Al agendar | Todos |
-  | Cita de mañana | La víspera, si la cita se agendó antes de ese día | Quien no dijo "No" a recordatorios |
+  | Confirmación de cita | Al agendar y al reprogramar | Todos |
+  | Cita de mañana | La víspera; si no se envió, aparece como "atrasado" el mismo día antes de la cita | Quien no dijo "No" a recordatorios |
   | Le toca volver | Cuando pasan 15 días, 1 mes o 2 meses (según la frecuencia del perro) desde su última visita y no tiene otra cita | Solo quien aceptó recordatorios |
   | Listo para recoger | Al entregar el perro | Todos |
-- **Correo automático:** la confirmación, el aviso de la víspera y "le toca volver" también salen por correo desde katanagrooming@gmail.com a quien dejó su correo (la confirmación, al guardar la cita; lo demás, todos los días a las 8:00 a. m.). "Listo para recoger" va solo por WhatsApp.
-- **Nueva cita:** fecha, hora, servicios, canal y si el perro ya tiene ficha. La ficha incluye **cada cuánto debería venir**, que es lo que activa "le toca volver".
-- **Registros:** citas y fichas, **Descargar Excel** (con estado, llegada y salida) y **Actualizar**.
+- **Correo automático:** la confirmación, el aviso de la víspera y "le toca volver" también salen por correo desde katanagrooming@gmail.com a quien dejó su correo (la confirmación, al guardar o reprogramar; lo demás, todos los días a las 8:00 a. m.).
+- **Nueva cita:** si ya hay otra cita a la misma hora, la app avisa; para agendarla igual, se vuelve a tocar el botón.
+- **Registros:**
+  - Buscador por perro, cliente o WhatsApp.
+  - Citas agrupadas por día. Las que aún no ocurren se pueden **Reprogramar**, **Cancelar** (queda en el historial) o **Eliminar** (solo si fue un error). Las canceladas se pueden **Reactivar**.
+  - **Editar ficha** en cada perro; si la ficha no tiene citas, también se puede eliminar.
+  - **Descargar Excel** con citas (incluye llegada, salida y notas) y fichas.
 
 ## Activar los correos (una sola vez)
 
@@ -88,5 +104,5 @@ El encabezado muestra un monograma provisional. Para usar el logo oficial, sube 
 ## Bueno saber
 
 - En el plan gratuito de Supabase, un proyecto que pasa **una semana sin uso** se pausa y hay que reactivarlo desde el panel. Con el uso diario de la agenda no debería pasar.
-- Las fichas no se pueden borrar desde la app, para no perder historial. Si hace falta, se borran en **Table Editor** de Supabase.
+- Para no perder historial, la base solo deja eliminar fichas sin citas y citas que todavía no ocurren. Lo demás se cancela.
 - Descargar el Excel de vez en cuando sirve como respaldo propio.

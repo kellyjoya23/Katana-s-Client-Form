@@ -47,7 +47,7 @@ body {
   max-width: 680px; margin: 0 auto; padding: 12px 16px;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
-.brand { display: flex; align-items: center; gap: 10px; line-height: 1; color: var(--blanco); }
+.brand { display: flex; align-items: center; gap: 10px; line-height: 1; color: var(--blanco); margin: 0; font-size: inherit; font-weight: inherit; }
 .brand-mark {
   width: 40px; height: 40px; flex: none; border-radius: 50%;
   background: var(--amarillo); color: var(--morado);
@@ -56,16 +56,16 @@ body {
 }
 .brand-text { display: flex; flex-direction: column; }
 .logo { font-family: var(--titulo); font-size: 22px; letter-spacing: .01em; }
-.sub { font-size: 10px; font-weight: 700; letter-spacing: .32em; margin-top: 4px; color: var(--lila); }
+.sub { font-size: 10px; font-weight: 700; letter-spacing: .32em; margin-top: 4px; color: var(--fondo); }
 
 .tabs {
   display: flex; padding: 4px; gap: 2px;
-  background: rgba(253, 253, 253, .14); border-radius: 999px;
+  background: rgba(31, 23, 71, .2); border-radius: 999px;
 }
 .tab {
   font: inherit; font-weight: 700; font-size: 15px; color: var(--blanco);
   background: none; border: 0; border-radius: 999px;
-  min-height: 40px; padding: 0 14px; cursor: pointer;
+  min-height: 44px; padding: 0 14px; cursor: pointer; white-space: nowrap;
   display: inline-flex; align-items: center; gap: 6px;
 }
 .tab[aria-selected="true"] { background: var(--blanco); color: var(--morado); }
@@ -222,7 +222,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--morado); box-sh
 .seg-btn {
   font: inherit; font-weight: 700; font-size: 15px; color: var(--morado);
   background: none; border: 0; border-radius: 999px;
-  min-height: 40px; padding: 0 16px; cursor: pointer;
+  min-height: 44px; padding: 0 16px; cursor: pointer;
 }
 .seg-btn[aria-selected="true"] { background: var(--morado); color: var(--blanco); }
 
@@ -264,7 +264,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--morado); box-sh
 .btn:disabled { opacity: .6; cursor: progress; }
 
 .logout {
-  margin-left: auto; min-height: 40px; padding: 0 12px; cursor: pointer;
+  margin-left: auto; min-height: 44px; padding: 0 12px; cursor: pointer;
   font: inherit; font-size: 14px; font-weight: 600; color: var(--blanco);
   background: none; border: 0; text-decoration: underline; text-underline-offset: 3px;
 }
@@ -329,7 +329,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--morado); box-sh
 .inline-form textarea { min-height: 72px; }
 .msg { grid-template-columns: 1fr; }
 .msg-type { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--morado); }
-.tipo-listo .msg-type { color: var(--naranja); }
+.tipo-listo .msg-type, .atrasado .msg-type { color: var(--tinta); }
+.tipo-listo .msg-type::before, .atrasado .msg-type::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--naranja); vertical-align: 1px; }
 .msg-text {
   margin: 10px 0 0; padding: 12px 14px; font-size: 15px; line-height: 1.45;
   background: var(--fondo); border-radius: 4px 16px 16px 16px;
@@ -338,4 +339,56 @@ input:focus, textarea:focus { outline: none; border-color: var(--morado); box-sh
 .done-confirm .note { margin-top: 10px; }
 @media (max-width: 420px) {
   .hoy-row { grid-template-columns: 64px 1fr; }
+}
+
+/* ---------- Mejoras de la auditoría ---------- */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 50; padding: 10px 14px; border-radius: 12px; background: var(--amarillo); color: var(--tinta); font-weight: 700; }
+.skip:focus { top: 12px; }
+main:focus { outline: none; }
+
+.forgot { display: block; margin: 12px auto 0; }
+.ok-msg { margin: -8px 0 16px; padding: 10px 12px; font-size: 14px; font-weight: 600; background: var(--fondo); border-left: 4px solid var(--morado); border-radius: 8px; }
+
+.warn { margin: 0 0 20px; padding: 12px 14px; font-size: 15px; font-weight: 600; background: #FFF6D6; border-left: 4px solid var(--amarillo); border-radius: 10px; }
+
+.search { margin-top: 18px; }
+.search input { width: 100%; min-height: 48px; padding: 12px 14px; font: inherit; font-size: 16px; color: var(--tinta); background: #fff; border: 1.5px solid var(--edge); border-radius: 14px; }
+.search input:focus { outline: none; border-color: var(--morado); box-shadow: 0 0 0 4px var(--lila); }
+.filtro { margin: 10px 0 0; font-size: 14px; font-weight: 600; }
+
+.row-links { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 4px; }
+.link-btn.danger { color: #B33A17; }
+.reg-row { grid-template-columns: 74px 1fr; }
+.reg-row.cancelada .name { text-decoration: line-through; color: var(--soft); }
+.group-title .sub-date { font-weight: 600; color: var(--soft); }
+.rows.compact .row { padding: 10px 0; }
+
+.sheet {
+  width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); padding: 0;
+  border: 0; border-radius: 22px; background: var(--blanco); color: var(--tinta);
+  box-shadow: 0 30px 60px -20px rgba(31, 23, 71, .5);
+}
+.sheet::backdrop { background: rgba(31, 23, 71, .45); }
+.sheet form { padding: 20px 20px 0; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sheet-head h2 { margin: 0; font-family: var(--titulo); font-weight: 400; font-size: 22px; line-height: 1.2; color: var(--morado); }
+.sheet-actions {
+  position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+  margin: 0 -20px; padding: 14px 20px; background: var(--blanco); border-top: 1px solid var(--line);
+}
+.sheet-actions .danger { margin-left: auto; }
+
+.toast { display: flex; align-items: center; gap: 14px; }
+.toast.has-action { pointer-events: auto; }
+.toast-btn {
+  flex: none; min-height: 44px; padding: 0 12px; cursor: pointer;
+  font: inherit; font-weight: 700; color: var(--amarillo);
+  background: none; border: 0; text-decoration: underline; text-underline-offset: 3px;
+}
+.toast-btn:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; border-radius: 8px; }
+
+@media (max-width: 360px) {
+  .tab { padding: 0 9px; font-size: 14px; }
+  .count { min-width: 20px; height: 20px; }
 }
