@@ -852,3 +852,53 @@ button.cita-abrir { cursor: pointer; }
 /* Auditoría: contraste */
 .eyebrow { color: #B33A17; }
 .premio-pend { background: rgba(31, 23, 71, .28); }
+
+/* ---------- Calendario ---------- */
+.cal-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.cal-box { background: var(--blanco); border: 1px solid var(--line); border-radius: 24px; padding: 16px; }
+.cal-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.cal-mes { flex: 1; margin: 0; text-align: center; font-family: var(--titulo); font-size: 20px; color: var(--tinta); }
+.cal-hoy { margin-left: 4px; }
+.cal-semana, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.cal-semana span { text-align: center; font-size: 12px; font-weight: 700; color: var(--soft); padding-bottom: 4px; }
+.cal-d {
+  position: relative; aspect-ratio: 1 / 1.05; min-height: 44px; padding: 6px 4px 4px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  font: inherit; color: var(--tinta); background: var(--fondo); border: 1.5px solid transparent; border-radius: 14px;
+}
+.cal-d:hover { border-color: var(--lila); }
+.cal-d:focus-visible { outline: 3px solid var(--naranja); outline-offset: 2px; }
+.cal-num { font-weight: 700; font-size: 15px; line-height: 1; }
+.cal-d.pasado { background: transparent; color: var(--soft); }
+.cal-d.hoy { border-color: var(--morado); }
+.cal-d.hoy .cal-num { color: var(--morado); }
+.cal-d[aria-pressed="true"] { background: var(--morado); border-color: var(--morado); color: var(--blanco); }
+.cal-d[aria-pressed="true"] .cal-num { color: var(--blanco); }
+.cal-marcas { display: flex; gap: 2px; align-items: center; min-height: 10px; }
+.cal-pt { width: 8px; height: 8px; border-radius: 50%; background: var(--lila); border: 1px solid rgba(31, 23, 71, .25); }
+.cal-pt.t-amarillo { background: var(--amarillo); }
+.cal-pt.t-naranja { background: var(--naranja); }
+.cal-pt.t-fondo { background: #CFC6FF; }
+.cal-mas { font-style: normal; font-size: 10px; font-weight: 700; }
+.cal-n { display: none; }
+.cal-dia { background: var(--blanco); border: 1px solid var(--line); border-radius: 24px; padding: 16px; }
+.cal-dia-titulo { margin: 0 0 4px; font-family: var(--titulo); font-weight: 400; font-size: 18px; }
+.cal-empty { padding: 20px 8px; }
+@media (max-width: 1000px) { .cal-layout { grid-template-columns: 1fr; } }
+@media (max-width: 480px) {
+  .cal-box, .cal-dia { padding: 12px 10px; border-radius: 20px; }
+  .cal-semana, .cal-grid { gap: 4px; }
+  .cal-d { border-radius: 12px; padding: 5px 2px 4px; }
+  .cal-num { font-size: 14px; }
+  .cal-pt { width: 6px; height: 6px; }
+  .cal-marcas { display: none; }
+  .cal-n { display: block; min-width: 18px; padding: 0 4px; border-radius: 999px; background: var(--naranja); color: var(--tinta); font-size: 11px; font-weight: 700; line-height: 16px; text-align: center; }
+  .cal-d[aria-pressed="true"] .cal-n { background: var(--amarillo); }
+  .cal-mes { font-size: 17px; }
+  .cal-head .icon-btn { width: 40px; height: 40px; }
+}
+/* Calendario: el número de citas se lee mejor que los puntitos */
+.cal-marcas { display: none; }
+.cal-n { display: block; min-width: 20px; padding: 0 5px; border-radius: 999px; background: var(--naranja); color: var(--tinta); font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
+.cal-d[aria-pressed="true"] .cal-n { background: var(--amarillo); }
+.cal-d.pasado .cal-n { background: var(--lila); }

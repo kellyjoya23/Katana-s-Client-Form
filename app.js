@@ -868,7 +868,7 @@
   }
 
   // ---------- Menú lateral ----------
-  const VISTAS = ['hoy', 'mensajes', 'nueva', 'registros', 'vip'];
+  const VISTAS = ['hoy', 'cal', 'mensajes', 'nueva', 'registros', 'vip'];
   const movil = () => matchMedia('(max-width: 899px)').matches;
 
   function abrirMenu(abrir) {
@@ -894,6 +894,7 @@
     if (which === 'registros') refresh();
     if (which === 'hoy' || which === 'mensajes') refreshHoy();
     if (which === 'vip') refreshVip();
+    if (which === 'cal') refreshCal();
     if ($('#side').classList.contains('open')) abrirMenu(false);
     window.scrollTo({ top: 0 });
   }
@@ -1990,6 +1991,7 @@
       : `<p class="mini-empty">No hay citas para mañana.</p>`;
 
     if ($('#perfil').open) renderPerfil();
+    if (!$('#view-cal').hidden) renderCal();
     if (abierto) $(`#nota-${CSS.escape(abierto.id)}`)?.focus();
   }
 
@@ -2048,6 +2050,103 @@
       }
     }
     b.disabled = false;
+  });
+
+  // ---------- Calendario ----------
+  let calMes = today().slice(0, 7);   // AAAA-MM que se está viendo
+  let calDia = today();               // día elegido
+
+  async function refreshCal() {
+    renderCal();
+    try { await loadAll(); renderCal(); } catch (err) {
+      console.error(err);
+      toast(isAuthError(err) ? 'Tu sesión se cerró. Vuelve a iniciar sesión.' : 'No se pudo cargar el calendario. Revisa tu conexión.');
+    }
+  }
+
+  const citasDelDia = iso => citas.filter(c => c.fecha === iso && c.estado !== 'cancelada')
+    .sort((a, b) => a.hora.localeCompare(b.hora));
+
+  function calRow(c) {
+    const f = fichaDe(c);
+    const est = c.estado === 'agendada' ? '' : `<span class="chip-s estado-${esc(c.estado)}">${esc(ESTADO_LABEL[c.estado] || c.estado)}</span>`;
+    const cuerpo = `<span class="avatar ${tono(f || c)}" aria-hidden="true">${esc(inicial(c.perro))}</span>
+      <span class="cita-info"><span class="cita-name">${esc(c.perro)}</span>
+        <span class="cita-meta">${esc(hora12(c.hora))} · ${esc(servicioPrincipal(c.servicios))}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span></span>${est}`;
+    return f
+      ? `<li><button type="button" class="fila" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(c.perro)}, ${esc(hora12(c.hora))}">${cuerpo}<span class="fila-ir">${ICO_FLECHA}</span></button></li>`
+      : `<li><div class="fila sin-ficha">${cuerpo}</div></li>`;
+  }
+
+  function renderCal() {
+    const grid = $('#calGrid');
+    if (!grid) return;
+    const [y, m] = calMes.split('-').map(Number);
+    const primero = new Date(y, m - 1, 1, 12);
+    const diasMes = new Date(y, m, 0).getDate();
+    const hueco = (primero.getDay() + 6) % 7;            // semana empieza el lunes
+    const t = today();
+    $('#calMes').textContent = cap(primero.toLocaleDateString('es-SV', { month: 'long', year: 'numeric' }));
+    const delMes = citas.filter(c => c.fecha.startsWith(calMes) && c.estado !== 'cancelada');
+    $('#calStats').textContent = plural(delMes.length, 'cita este mes', 'citas este mes');
+
+    let html = '';
+    for (let i = 0; i < hueco; i++) html += '<span class="cal-vacio" aria-hidden="true"></span>';
+    for (let d = 1; d <= diasMes; d++) {
+      const iso = `${calMes}-${String(d).padStart(2, '0')}`;
+      const lista = citasDelDia(iso);
+      const n = lista.length;
+      const marcas = lista.slice(0, 3).map(c => `<i class="cal-pt ${tono(fichaDe(c) || c)}"></i>`).join('') + (n > 3 ? `<i class="cal-mas">+${n - 3}</i>` : '');
+      const cls = ['cal-d', iso === t ? 'hoy' : '', iso < t ? 'pasado' : '', n ? 'con' : ''].filter(Boolean).join(' ');
+      html += `<button type="button" class="${cls}" data-cal-dia="${iso}" aria-pressed="${iso === calDia}" aria-label="${esc(fmtLong(iso))}${n ? `, ${plural(n, 'cita', 'citas')}` : ', sin citas'}">
+        <span class="cal-num">${d}</span><span class="cal-marcas" aria-hidden="true">${marcas}</span>
+        ${n ? `<span class="cal-n" aria-hidden="true">${n}</span>` : ''}</button>`;
+    }
+    grid.innerHTML = html;
+
+    // Citas del día elegido
+    const lista = citasDelDia(calDia);
+    $('#calDiaTitulo').textContent = cap(fmtLong(calDia)) + (calDia === t ? ' · hoy' : '');
+    $('#calNueva').hidden = calDia < t;
+    $('#calLista').innerHTML = lista.length
+      ? `<ul class="filas">${lista.map(calRow).join('')}</ul>`
+      : `<div class="empty cal-empty"><p>${calDia < t ? 'No hubo citas este día.' : 'No hay citas este día.'}</p>${calDia >= t ? '<button type="button" class="btn btn-ghost btn-sm" data-cal-nueva>Agendar una cita</button>' : ''}</div>`;
+  }
+
+  // Nueva cita con la fecha ya puesta
+  function nuevaCitaEnFecha(iso) {
+    switchTab('nueva');
+    resetForm();
+    const inp = $('#f-fecha');
+    if (inp) inp.value = iso;
+    toast(`Nueva cita para el ${fmtDay(iso)}`);
+  }
+
+  $('#view-cal').addEventListener('click', e => {
+    const d = e.target.closest('[data-cal-dia]');
+    if (d) {
+      calDia = d.dataset.calDia;
+      renderCal();
+      $(`[data-cal-dia="${calDia}"]`)?.focus();
+      if (movil()) $('#calDiaTitulo').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      return;
+    }
+    const mb = e.target.closest('[data-cal-mes]');
+    if (mb) {
+      const paso = Number(mb.dataset.calMes);
+      if (paso === 0) { calMes = today().slice(0, 7); calDia = today(); }
+      else {
+        const [y, m] = calMes.split('-').map(Number);
+        const nd = new Date(y, m - 1 + paso, 1, 12);
+        calMes = `${nd.getFullYear()}-${String(nd.getMonth() + 1).padStart(2, '0')}`;
+        calDia = calMes === today().slice(0, 7) ? today() : `${calMes}-01`;
+      }
+      renderCal();
+      return;
+    }
+    if (e.target.closest('[data-cal-nueva]') || e.target.closest('#calNueva')) { nuevaCitaEnFecha(calDia); return; }
+    const pf = e.target.closest('[data-perfil]');
+    if (pf) abrirPerfil(pf.dataset.perfil);
   });
 
   // ---------- Sección Katana's VIP ----------

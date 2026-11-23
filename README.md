@@ -63,8 +63,9 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
 
 ## Cómo funciona
 
-- **Menú lateral:** Inicio, Mensajes, Nueva cita, Citas y fichas, y Katana's VIP. En la computadora queda fijo a la izquierda; en el teléfono se abre con el botón de menú (arriba a la izquierda), que también muestra cuántos mensajes hay por enviar.
+- **Menú lateral:** Inicio, Calendario, Mensajes, Nueva cita, Citas y fichas, y Katana's VIP. En la computadora queda fijo a la izquierda; en el teléfono se abre con el botón de menú (arriba a la izquierda), que también muestra cuántos mensajes hay por enviar.
 - **Inicio (tablero):** saludo, cuatro tarjetas (citas de hoy, perros en Katana's, mensajes por enviar y premios Katana's VIP del día), la agenda de hoy con Recibir y Entregar, el resumen Katana's VIP (premios de hoy y perros que pierden su plazo esta semana) y las citas de mañana.
+- **Calendario:** vista del mes con cuántas citas hay cada día; al tocar un día se ven sus citas y se puede agendar una nueva en esa fecha.
 - **Mensajes:** todos los mensajes por enviar, con filtros por tipo.
 - **Perritos y citas:** al deslizar un registro a la derecha se elimina (pide confirmación). Solo se pueden eliminar las citas que todavía no pasan y los perritos sin citas; lo que tiene historial se cancela o se marca "No vino", para no perder sellos.
 
