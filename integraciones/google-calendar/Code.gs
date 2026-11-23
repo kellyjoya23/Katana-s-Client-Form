@@ -75,7 +75,8 @@ function guardarEvento(cita) {
     evento.setTag('cita_id', cita.id);
     props.setProperty('cita_' + cita.id, evento.getId());
   }
-  evento.setColor(cita.estado === 'entregada' ? CalendarApp.EventColor.GRAY : CalendarApp.EventColor.GRAPE);
+  // Colores de Google Calendar: '3' = morado (uva), '8' = gris (ya entregado)
+  evento.setColor(cita.estado === 'entregada' ? '8' : '3');
   return evento.getId();
 }
 
