@@ -1,4 +1,4 @@
-/* Katana's Grooming · Tarjeta Amigo VIP · design system v3 */
+/* Katana's Grooming · Tarjeta Katana's VIP · design system v3 */
 :root {
   --morado: #664EFC;
   --amarillo: #FFDC5C;
@@ -121,3 +121,4 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.pill-sub { margin: 6px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--fondo); }

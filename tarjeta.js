@@ -1,4 +1,4 @@
-/* Katana's Grooming · Tarjeta Amigo VIP (página pública para el cliente)
+/* Katana's Grooming · Tarjeta Katana's VIP (página pública para el cliente)
  * Lee el código del enlace (?c=…) y pide a Supabase solo lo que se ve en la tarjeta.
  */
 (() => {
@@ -23,7 +23,7 @@
   }
 
   function pintar(t) {
-    document.title = `${t.perro} · Amigo VIP · Katana's Grooming`;
+    document.title = `${t.perro} · Katana's VIP · Katana's Grooming`;
     $('#perro').textContent = t.perro;
     $('#tutor').textContent = t.tutor ? `Tutor: ${t.tutor}` : '';
     if (t.ronda > 1) $('#tutor').textContent += ` · Tarjeta n.º ${t.ronda}`;

@@ -1,4 +1,4 @@
--- Katana's Grooming · Programa de lealtad "Amigo VIP"
+-- Katana's Grooming · Programa de lealtad "Katana's VIP"
 -- Se ejecuta después de schema.sql. Se puede volver a ejecutar sin perder datos
 -- (la vista y las funciones se borran y se vuelven a crear; las tablas no se tocan).
 --

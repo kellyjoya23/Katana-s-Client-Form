@@ -14,8 +14,8 @@ App web para que el equipo de Katana's registre cada cita y, de paso, arme la ba
 | `icons/`, `manifest.webmanifest` | Ícono y nombre de la app al agregarla a la pantalla de inicio |
 | `vercel.json` | Encabezados de seguridad (política de contenido, bloqueo de iframes) |
 | `supabase/schema.sql` | Tablas y reglas de seguridad de la base de datos |
-| `supabase/amigo_vip.sql` | Programa de lealtad Amigo VIP (se ejecuta después de `schema.sql`) |
-| `tarjeta.html`, `tarjeta.css`, `tarjeta.js` | Tarjeta Amigo VIP que ve el cliente |
+| `supabase/amigo_vip.sql` | Programa de lealtad Katana's VIP (se ejecuta después de `schema.sql`) |
+| `tarjeta.html`, `tarjeta.css`, `tarjeta.js` | Tarjeta Katana's VIP que ve el cliente |
 
 No hay que instalar nada ni compilar.
 
@@ -63,8 +63,8 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
 
 ## Cómo funciona
 
-- **Menú lateral:** Inicio, Mensajes, Nueva cita, Citas y fichas, y Amigo VIP. En la computadora queda fijo a la izquierda; en el teléfono se abre con el botón de menú (arriba a la izquierda), que también muestra cuántos mensajes hay por enviar.
-- **Inicio (tablero):** saludo, cuatro tarjetas (citas de hoy, perros en Katana's, mensajes por enviar y premios Amigo VIP del día), la agenda de hoy con Recibir y Entregar, el resumen Amigo VIP (premios de hoy y perros que pierden su plazo esta semana) y las citas de mañana.
+- **Menú lateral:** Inicio, Mensajes, Nueva cita, Citas y fichas, y Katana's VIP. En la computadora queda fijo a la izquierda; en el teléfono se abre con el botón de menú (arriba a la izquierda), que también muestra cuántos mensajes hay por enviar.
+- **Inicio (tablero):** saludo, cuatro tarjetas (citas de hoy, perros en Katana's, mensajes por enviar y premios Katana's VIP del día), la agenda de hoy con Recibir y Entregar, el resumen Katana's VIP (premios de hoy y perros que pierden su plazo esta semana) y las citas de mañana.
 - **Mensajes:** todos los mensajes por enviar, con filtros por tipo.
 
 - **Hoy** (se abre al iniciar sesión):
@@ -92,7 +92,7 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
   - **Editar ficha** en cada perro; si la ficha no tiene citas, también se puede eliminar.
   - **Descargar Excel** con citas (incluye llegada, salida y notas) y fichas.
 
-## Amigo VIP (programa de lealtad)
+## Katana's VIP (programa de lealtad)
 
 Los sellos se calculan solos a partir de las citas: Tere no tiene que anotar puntos en ningún lado.
 
@@ -104,10 +104,10 @@ Los sellos se calculan solos a partir de las citas: Tere no tiene que anotar pun
   - **Bienvenida:** los perros con al menos una cita entregada entre el 1 y el 22 de noviembre de 2026 empiezan con 1 sello. El programa arranca el 23 de noviembre de 2026.
 - **En Hoy:** cada cita muestra qué sello será ("esta visita es el sello 5 de 10") y si ese día le toca premio, para aplicarlo al cobrar. Si no va a sumar, también lo dice y por qué.
 - **Al entregar:** el formulario trae marcados los premios del día; al confirmar quedan registrados como entregados. Si alguno no se dio, se desmarca.
-- **Mensajes:** "Listo para recoger" incluye cuántos sellos lleva, el premio que ganó y hasta qué día tiene para volver. Además aparece una **Bienvenida Amigo VIP** por perro (una sola vez) con el enlace de su tarjeta.
+- **Mensajes:** "Listo para recoger" incluye cuántos sellos lleva, el premio que ganó y hasta qué día tiene para volver. Además aparece una **Bienvenida Katana's VIP** por perro (una sola vez) con el enlace de su tarjeta.
 - **En Fichas:** las 10 huellitas de cada perro, hasta cuándo puede volver, **Enviar tarjeta** y **Marcar premio entregado** para los premios pendientes.
 - **Tarjeta del cliente:** `tarjeta.html?c=código` muestra los sellos, los premios y las condiciones. El cliente la abre desde WhatsApp y la puede guardar en la pantalla de inicio; se actualiza sola. Solo muestra el nombre del perro, el primer nombre del tutor y los sellos.
-- **Excel:** la hoja **Amigo VIP** trae sellos, plazo, próximo premio, premios por entregar y el enlace de cada tarjeta.
+- **Excel:** la hoja **Katana's VIP** trae sellos, plazo, próximo premio, premios por entregar y el enlace de cada tarjeta.
 - **Base de datos:** `supabase/amigo_vip.sql` (tabla `canjes`, columna `fichas.codigo`, vista `amigo_vip`, función pública `tarjeta_amigo_vip`). Para cambiar las reglas (fechas, días o premios), se edita la función `amigo_vip_calcular` ahí y las constantes `VIP_*` al inicio de `app.js`.
 
 ## Tipografía

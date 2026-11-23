@@ -812,3 +812,20 @@ button.cita-abrir { cursor: pointer; }
 }
 .chip .chip-ico { display: inline-grid; min-height: 0; padding: 0; background: none; border: 0; border-radius: 0; }
 .progress li.done { padding: 0; }
+.reg-sub { margin: 2px 0 0; width: 100%; order: 3; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+
+/* ---------- Sección Katana's VIP ---------- */
+.eyebrow { margin: 0 0 2px; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--naranja); }
+.hitos { list-style: none; margin: 0 0 6px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.hitos li { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; border-radius: 18px; background: var(--blanco); border: 1px solid var(--line); font-size: 13px; font-weight: 700; text-align: center; }
+.hito-n { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--naranja); color: var(--tinta); font-family: var(--titulo); font-size: 16px; }
+.vip-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.vip-item { background: var(--blanco); border: 1px solid var(--line); border-radius: 20px; padding: 10px 12px; }
+.vip-abrir { width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-radius: 14px; }
+.vip-abrir:focus-visible { outline: 3px solid var(--naranja); outline-offset: 2px; }
+.vip-item .avatar { width: 46px; height: 46px; border-radius: 15px; font-size: 19px; }
+.vip-item-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vip-item-info .vip-mini { margin: 0; }
+.vip-accion { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 2px 58px; }
+.vip-accion .btn { min-height: 40px; }
+@media (max-width: 420px) { .vip-accion { margin-left: 0; } }

@@ -60,7 +60,7 @@
   const TRANQUILO = 'Es tranquilo';
   const FRECUENCIAS = ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'];
 
-  // Programa de lealtad Amigo VIP (las reglas de cálculo viven en supabase/amigo_vip.sql)
+  // Programa de lealtad Katana's VIP (las reglas de cálculo viven en supabase/amigo_vip.sql)
   const VIP_LANZAMIENTO = '2026-11-23';
   const VIP_DIAS = 30;
   const VIP_HITOS = [3, 5, 7, 10];
@@ -254,7 +254,7 @@
   let citas = [];
   let fichas = [];
   let avisos = [];
-  let vip = {};      // estado Amigo VIP por ficha_id (vista amigo_vip)
+  let vip = {};      // estado Katana's VIP por ficha_id (vista amigo_vip)
   let canjes = [];   // premios entregados
   const findFicha = (wa, perro) => fichas.find(f => keyOf(f.whatsapp, f.perro) === keyOf(wa, perro));
   const fichaDe = c => (c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : null) || findFicha(c.whatsapp, c.perro) || null;
@@ -275,11 +275,11 @@
     fichas = f.data;
     citas = c.data.map(x => ({ ...x, hora: hhmm(x.hora) }));
     avisos = a.data;
-    // Si Amigo VIP falla, la agenda sigue funcionando: solo se avisa
+    // Si Katana's VIP falla, la agenda sigue funcionando: solo se avisa
     if (v.error || k.error) {
       console.error(v.error || k.error);
       if (isAuthError(v.error || k.error)) throw v.error || k.error;
-      toast('No se pudieron cargar los sellos Amigo VIP. La agenda funciona igual; toca Actualizar más tarde.');
+      toast('No se pudieron cargar los sellos Katana\'s VIP. La agenda funciona igual; toca Actualizar más tarde.');
     } else {
       vip = Object.fromEntries(v.data.map(x => [x.ficha_id, x]));
       canjes = k.data;
@@ -296,7 +296,7 @@
     canjes = k.data;
   }
 
-  // ---------- Amigo VIP ----------
+  // ---------- Katana's VIP ----------
   const VIP_VACIO = { sellos_total: 0, ronda: 1, sellos: 0, ultima_visita: null, vence: null, ultima_sumo: false };
   const vipDe = f => (f && vip[f.id]) || VIP_VACIO;
   const esGroomingCompleto = serv => asList(serv).some(s => norm(s).startsWith('grooming completo'));
@@ -337,12 +337,12 @@
   // Resumen de la tarjeta para mostrar en la ficha
   function vipResumen(f) {
     const v = vipDe(f);
-    if (!v.sellos_total) return 'Amigo VIP: sin sellos todavía';
+    if (!v.sellos_total) return 'Katana\'s VIP: sin sellos todavía';
     const ronda = v.ronda > 1 ? ` (tarjeta ${v.ronda})` : '';
     const plazo = v.sellos === 10 ? 'tarjeta completa'
       : v.vence >= today() ? `suma si vuelve antes del ${fmtDay(v.vence)}`
       : 'pasó la fecha: la próxima visita no suma, pero conserva sus sellos';
-    return `Amigo VIP: ${v.sellos} de 10 sellos${ronda} · ${plazo}`;
+    return `Katana's VIP: ${v.sellos} de 10 sellos${ronda} · ${plazo}`;
   }
 
   // Versión corta para listas
@@ -969,7 +969,7 @@
     if (c.estado === 'cancelada' && c.fecha >= t) {
       b.push(`<button type="button" class="link-btn" data-cita="reactivar" data-id="${esc(c.id)}">Reactivar</button>`);
     }
-    // Citas que ya pasaron y nadie cerró: sin esto no suman sello Amigo VIP
+    // Citas que ya pasaron y nadie cerró: sin esto no suman sello Katana's VIP
     if ((c.estado === 'agendada' || c.estado === 'en_katana') && c.fecha < t) {
       b.push(`<button type="button" class="link-btn" data-cita="atendida" data-id="${esc(c.id)}">Sí vino: marcar entregada</button>`);
       b.push(`<button type="button" class="link-btn" data-cita="cancelar" data-id="${esc(c.id)}">No vino</button>`);
@@ -1110,8 +1110,8 @@
         <button type="button" data-p="editar">${ICO.edit}<span>Editar</span></button>
       </div>
 
-      <section class="perfil-card vip-card" aria-label="Amigo VIP">
-        <div class="vip-card-head"><h3>Amigo VIP</h3><p class="vip-count">${v.sellos}<span>/10</span></p></div>
+      <section class="perfil-card vip-card" aria-label="Katana's VIP">
+        <div class="vip-card-head"><h3>Katana's VIP</h3><p class="vip-count">${v.sellos}<span>/10</span></p></div>
         <div class="vip-mini lg">${sellosMini(v.sellos)}</div>
         <p class="vip-card-txt">${esc(vipCorto(f) === 'sin sellos' ? 'Su tarjeta empieza con su próximo grooming completo.' : cap(vipCorto(f)) + '.')}</p>
         ${pend.map(p => `<div class="premio-pend"><span>${esc(premioTxt(p.hito))}</span><button type="button" class="btn btn-sm btn-primary" data-premio="${esc(f.id)}" data-ronda="${p.ronda}" data-hito="${p.hito}">Marcar entregado</button></div>`).join('')}
@@ -1181,7 +1181,7 @@
       return;
     }
     if (act === 'atendida') {
-      if (!confirm(`¿${c.perro} sí vino el ${fmtDay(c.fecha)}? La cita queda como entregada y, si fue grooming completo, cuenta para Amigo VIP.`)) return;
+      if (!confirm(`¿${c.perro} sí vino el ${fmtDay(c.fecha)}? La cita queda como entregada y, si fue grooming completo, cuenta para Katana's VIP.`)) return;
       // Sin hora de salida: así no aparece un "Listo para recoger" atrasado
       const ok = await actualizarCita(id, { estado: 'entregada' }, null);
       if (!ok) return;
@@ -1373,7 +1373,7 @@
     return ws;
   }
 
-  // Hoja "Amigo VIP": una fila por perro, armada con los datos reales (nadie la llena a mano)
+  // Hoja "Katana's VIP": una fila por perro, armada con los datos reales (nadie la llena a mano)
   const VIP_COLS = [
     ['perro', 'Perro'], ['nombre', 'Tutor'], ['whatsapp', 'WhatsApp'], ['vip_tarjeta', 'Tarjeta n.º'],
     ['vip_sellos', 'Sellos (de 10)'], ['vip_total', 'Sellos acumulados'], ['vip_ultima', 'Última visita que cuenta'],
@@ -1407,7 +1407,7 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedCitas, CITA_COLS), 'Citas');
       XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedFichas, FICHA_COLS), 'Fichas');
-      XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedFichas.map(filaVip), VIP_COLS), 'Amigo VIP');
+      XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedFichas.map(filaVip), VIP_COLS), 'Katana\'s VIP');
       XLSX.writeFile(wb, `Katanas_Grooming_Citas_y_Clientes_${today()}.xlsx`);
       renderRegistros();
       toast('Excel descargado');
@@ -1482,7 +1482,7 @@
   // ---------- Hoy: check-in, check-out y mensajes ----------
   const FREC_DIAS = { 'Cada 2 semanas': 14, 'Cada mes': 30, 'Cada 2 meses': 60 };
   const TIEMPO_TXT = { 14: 'pasaron dos semanas', 30: 'pasó un mes', 60: 'pasaron dos meses' };
-  const TIPO_AVISO = { listo: 'Listo para recoger', dia_antes: 'Cita de mañana', confirmacion: 'Confirmación de cita', toca_volver: 'Le toca volver', amigo_vip: 'Bienvenida Amigo VIP' };
+  const TIPO_AVISO = { listo: 'Listo para recoger', dia_antes: 'Cita de mañana', confirmacion: 'Confirmación de cita', toca_volver: 'Le toca volver', amigo_vip: 'Bienvenida Katana\'s VIP' };
   const ORDEN_AVISO = { listo: 0, dia_antes: 1, confirmacion: 2, toca_volver: 3, amigo_vip: 4 };
 
   const listaPerros = fs => { const l = fs.map(x => x.perro); return l.length < 2 ? l[0] : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1]; };
@@ -1522,7 +1522,7 @@
     if (item.tipo === 'amigo_vip' && item.fichas?.length > 1) {
       const nombres = listaPerros(item.fichas);
       const lineas = [
-        `${hola} ${nombres} ya son *Amigos VIP* de Katana's Grooming. Cada uno tiene su propia tarjeta.`,
+        `${hola} ${nombres} ya son parte de *Katana's VIP*, nuestro programa de lealtad. Cada uno tiene su propia tarjeta.`,
         'Cada grooming completo suma un sello si vuelve dentro de los 30 días después de su visita anterior. En la visita 3 recibe un regalito sorpresa; en la 5, un 10% de descuento; en la 7, un tratamiento hidratante de manto gratis, y en la 10, una experiencia spa gratis.',
         ...item.fichas.map(x => {
           const v = vipDe(x);
@@ -1536,10 +1536,10 @@
     if (item.tipo === 'amigo_vip') {
       const v = vipDe(f);
       const inicio = v.sellos_total === 1 && v.ultima_visita && v.ultima_visita < VIP_LANZAMIENTO
-        ? `${f.perro} ya es *Amigo VIP* de Katana's Grooming. Por su visita de noviembre, le regalamos su primer sello.`
+        ? `${f.perro} ya es parte de *Katana's VIP*, nuestro programa de lealtad. Por su visita de noviembre, le regalamos su primer sello.`
         : v.sellos_total
-          ? `${f.perro} es *Amigo VIP* de Katana's Grooming y lleva ${plural(v.sellos, 'sello', 'sellos')} de 10.`
-          : `${f.perro} ya es *Amigo VIP* de Katana's Grooming. Su tarjeta empieza a llenarse con su próximo grooming completo.`;
+          ? `${f.perro} es parte de *Katana's VIP*, nuestro programa de lealtad, y lleva ${plural(v.sellos, 'sello', 'sellos')} de 10.`
+          : `${f.perro} ya es parte de *Katana's VIP*, nuestro programa de lealtad. Su tarjeta empieza a llenarse con su próximo grooming completo.`;
       const lineas = [
         `${hola} ${inicio}`,
         'Cada grooming completo suma un sello si vuelve dentro de los 30 días después de su visita anterior. En la visita 3 recibe un regalito sorpresa; en la 5, un 10% de descuento; en la 7, un tratamiento hidratante de manto gratis, y en la 10, una experiencia spa gratis.',
@@ -1551,7 +1551,7 @@
     return `${hola} Ya ${TIEMPO_TXT[item.dias] || 'pasó un tiempo'} desde la última visita de ${f.perro} a Katana's Grooming. ¿Le agendamos la próxima? Respóndanos con el día y la hora que le quedan mejor.`;
   }
 
-  // Línea de Amigo VIP en el mensaje "Listo para recoger" (después de entregar, con los sellos ya sumados)
+  // Línea de Katana's VIP en el mensaje "Listo para recoger" (después de entregar, con los sellos ya sumados)
   function lineaVipListo(c) {
     const f = fichaDe(c);
     if (!f || c.fecha < VIP_LANZAMIENTO || !esGroomingCompleto(c.servicios)) return '';
@@ -1559,13 +1559,13 @@
     if (v.ultima_visita !== c.fecha) return '';
     const enlace = `Vea su tarjeta: ${tarjetaUrl(f)}`;
     if (!v.ultima_sumo) {
-      return `Esta visita no sumó sello Amigo VIP porque pasaron más de 30 días desde la anterior, pero ${f.perro} conserva sus ${plural(v.sellos, 'sello', 'sellos')}. Si vuelve antes del ${fmtLong(v.vence)}, suma. ${enlace}`;
+      return `Esta visita no sumó sello Katana's VIP porque pasaron más de 30 días desde la anterior, pero ${f.perro} conserva sus ${plural(v.sellos, 'sello', 'sellos')}. Si vuelve antes del ${fmtLong(v.vence)}, suma. ${enlace}`;
     }
     const premio = VIP_PREMIOS[v.sellos] ? ` Con este sello ganó: *${premioTxt(v.sellos).toLowerCase()}*.` : '';
     const sigue = v.sellos === 10
       ? ` ¡Completó su tarjeta! Con su próximo grooming completo empieza una nueva.`
       : ` Su próxima visita suma si es antes del ${fmtLong(v.vence)}.`;
-    return `Con esta visita, ${f.perro} lleva *${v.sellos} de 10 sellos Amigo VIP*.${premio}${sigue} ${enlace}`;
+    return `Con esta visita, ${f.perro} lleva *${v.sellos} de 10 sellos Katana's VIP*.${premio}${sigue} ${enlace}`;
   }
 
   // Vista previa: las negritas de WhatsApp se muestran como negritas
@@ -1614,7 +1614,7 @@
       const item = { tipo: 'toca_volver', ficha: f, ref: ult, dias };
       if (!avisoDe('toca_volver', 'whatsapp', item)) out.push(item);
     }
-    // Bienvenida a Amigo VIP: una sola vez por perro, cuando ya tiene al menos un sello.
+    // Bienvenida a Katana's VIP: una sola vez por perro, cuando ya tiene al menos un sello.
     // Los perros del mismo dueño (mismo WhatsApp) van juntos en un solo mensaje.
     const porDueno = {};
     for (const f of fichas) {
@@ -1712,7 +1712,7 @@
       form = `<div class="inline-form">
         <label for="nota-${esc(c.id)}">${llegada ? '¿Cómo llegó y qué dejó?' : '¿Algo que contarle al dueño?'} <span class="opt">opcional</span></label>
         <textarea id="nota-${esc(c.id)}" rows="2" placeholder="${llegada ? 'Nudos, heridas, collar, juguete…' : 'Se portó muy bien…'}"></textarea>
-        ${premios.length ? `<fieldset class="vip-premios"><legend>Premios Amigo VIP</legend>
+        ${premios.length ? `<fieldset class="vip-premios"><legend>Premios Katana's VIP</legend>
           ${premios.map((p, i) => `<label class="consent"><input type="checkbox" name="premio-${esc(c.id)}" value="${i}" checked><span>Se le dio: ${esc(premioTxt(p.hito))}</span></label>`).join('')}
         </fieldset>` : ''}
         <div class="row-actions">
@@ -1727,7 +1727,7 @@
       cta = `<span class="listo-ico" title="Entregado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="sr-only">Entregado</span></span>`;
     }
 
-    // Solo lo indispensable: Amigo VIP y cuidados como íconos pequeños
+    // Solo lo indispensable: Katana's VIP y cuidados como íconos pequeños
     const marcas = [];
     const vc = vipChip(c, f);
     if (vc) marcas.push(vc);
@@ -1757,7 +1757,7 @@
     return out;
   }
 
-  // Amigo VIP en la agenda: un chip corto y el detalle escondido
+  // Katana's VIP en la agenda: un chip corto y el detalle escondido
   function vipChip(c, f) {
     if (!f || c.estado === 'cancelada') return '';
     const v = vipDe(f);
@@ -1777,10 +1777,10 @@
     const out = [];
     if (c.estado !== 'entregada') {
       const pv = vipPrevision(c);
-      if (pv?.suma) out.push(`Amigo VIP: esta visita es el sello ${pv.sello} de 10${pv.premio ? `. Premio de hoy: ${premioTxt(pv.premio)}` : ''}`);
+      if (pv?.suma) out.push(`Katana's VIP: esta visita es el sello ${pv.sello} de 10${pv.premio ? `. Premio de hoy: ${premioTxt(pv.premio)}` : ''}`);
       else if (pv) out.push(pv.motivo);
     } else if (c.fecha >= VIP_LANZAMIENTO && esGroomingCompleto(c.servicios) && vipDe(f).ultima_visita === c.fecha && !vipDe(f).ultima_sumo) {
-      out.push('Amigo VIP: esta visita no sumó sello (más de 30 días)');
+      out.push('Katana\'s VIP: esta visita no sumó sello (más de 30 días)');
     }
     for (const p of premiosPendientes(f)) out.push(`Premio por entregar: ${premioTxt(p.hito)}`);
     return out;
@@ -1790,7 +1790,7 @@
   let msgFiltro = 'todos';
   const FILTROS_MSG = [
     ['todos', 'Todos'], ['listo', 'Listos para recoger'], ['confirmacion', 'Confirmaciones'],
-    ['dia_antes', 'Cita de mañana'], ['toca_volver', 'Le toca volver'], ['amigo_vip', 'Amigo VIP']
+    ['dia_antes', 'Cita de mañana'], ['toca_volver', 'Le toca volver'], ['amigo_vip', 'Katana\'s VIP']
   ];
 
   const ICONOS = {
@@ -1817,7 +1817,7 @@
   function mensajeVence(f) {
     const v = vipDe(f);
     const nombre = primerNombre(f.nombre);
-    return `${nombre ? `¡Hola, ${nombre}!` : '¡Hola!'} ${f.perro} lleva ${v.sellos} de 10 sellos Amigo VIP. Si su próximo grooming completo es antes del ${fmtLong(v.vence)}, suma su sello ${v.sellos + 1}${VIP_PREMIOS[v.sellos + 1] ? ` y gana: ${premioTxt(v.sellos + 1).toLowerCase()}` : ''}. ¿Le agendamos? Respóndanos con el día y la hora que le quedan mejor.`;
+    return `${nombre ? `¡Hola, ${nombre}!` : '¡Hola!'} ${f.perro} lleva ${v.sellos} de 10 sellos Katana's VIP. Si su próximo grooming completo es antes del ${fmtLong(v.vence)}, suma su sello ${v.sellos + 1}${VIP_PREMIOS[v.sellos + 1] ? ` y gana: ${premioTxt(v.sellos + 1).toLowerCase()}` : ''}. ¿Le agendamos? Respóndanos con el día y la hora que le quedan mejor.`;
   }
 
   function renderDashboard(deHoy) {
@@ -1840,9 +1840,9 @@
       <div class="stat stat-lila"><span class="stat-ico">${ICONOS.cal}</span><p class="stat-label">Citas de hoy</p><p class="stat-num">${deHoyReal.length}</p><p class="stat-sub">${esc(sub || 'Sin citas')}</p></div>
       <div class="stat stat-amarillo"><span class="stat-ico">${ICONOS.tijera}</span><p class="stat-label">En Katana's ahora</p><p class="stat-num">${n('en_katana')}</p><p class="stat-sub">${n('en_katana') === 1 ? 'perrito en grooming' : 'perritos en grooming'}</p></div>
       <button type="button" class="stat stat-naranja" data-go="mensajes"><span class="stat-ico">${ICONOS.chat}</span><span class="stat-label">Mensajes por enviar</span><span class="stat-num">${pendLista.length}</span><span class="stat-sub">${listos ? `${plural(listos, 'listo', 'listos')} para recoger` : 'Ver mensajes'}</span></button>
-      <button type="button" class="stat stat-morado" data-go="vip"><span class="stat-ico">${ICONOS.regalo}</span><span class="stat-label">Premios VIP de hoy</span><span class="stat-num">${premiosHoy}</span><span class="stat-sub">${suman ? `${plural(suman, 'perrito suma', 'perritos suman')} sello hoy` : 'Ver Amigo VIP'}</span></button>`;
+      <button type="button" class="stat stat-morado" data-go="vip"><span class="stat-ico">${ICONOS.regalo}</span><span class="stat-label">Premios VIP de hoy</span><span class="stat-num">${premiosHoy}</span><span class="stat-sub">${suman ? `${plural(suman, 'perrito suma', 'perritos suman')} sello hoy` : 'Ver programa VIP'}</span></button>`;
 
-    // Panel Amigo VIP del tablero
+    // Panel Katana's VIP del tablero
     const vencen = vipPorVencer();
     $('#vipHoy').innerHTML = `
       <p class="mini-title">Pierden su plazo esta semana</p>
@@ -1977,30 +1977,30 @@
     b.disabled = false;
   });
 
-  // ---------- Sección Amigo VIP ----------
+  // ---------- Sección Katana's VIP ----------
   async function refreshVip() {
     renderVip();
     try { await loadAll(); renderVip(); } catch (err) {
       console.error(err);
-      toast(isAuthError(err) ? 'Tu sesión se cerró. Vuelve a iniciar sesión.' : 'No se pudo cargar Amigo VIP. Revisa tu conexión.');
+      toast(isAuthError(err) ? 'Tu sesión se cerró. Vuelve a iniciar sesión.' : 'No se pudo cargar Katana\'s VIP. Revisa tu conexión.');
     }
   }
 
-  function vipFila(f, extra = '') {
+  // Tarjeta de un perrito en la sección VIP: tocarla abre su perfil; un solo botón según la lista
+  function vipFila(f, accion = '') {
     const v = vipDe(f);
-    const pend = premiosPendientes(f);
-    const wa = normWa(f.whatsapp).length === 8;
-    return `<li class="row ficha"><div>
-      <div class="vip-row-head"><p class="name">${esc(f.perro)}</p><p class="vip-count">${v.sellos}<span>/10</span></p></div>
-      <div class="vip-mini" aria-label="${esc(`${v.sellos} de 10 sellos`)}">${sellosMini(v.sellos)}</div>
-      <p class="meta">${esc(primerNombre(f.nombre))} · ${esc(vipCorto(f))}</p>
-      ${pend.length ? `<ul class="tags">${pend.map(p => `<li class="tag premio">Premio por entregar: ${esc(premioTxt(p.hito))}</li>`).join('')}</ul>` : ''}
-      <div class="row-links">
-        ${extra}
-        ${wa ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensaje({ tipo: 'amigo_vip', ficha: f })))}" target="_blank" rel="noopener" data-tarjeta="${esc(f.id)}">Enviar tarjeta</a>` : ''}
-        ${pend.map(p => `<button type="button" class="link-btn" data-premio="${esc(f.id)}" data-ronda="${p.ronda}" data-hito="${p.hito}">Marcar premio entregado (sello ${p.hito})</button>`).join('')}
-      </div>
-    </div></li>`;
+    return `<li class="vip-item">
+      <button type="button" class="vip-abrir" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(f.perro)}">
+        <span class="avatar ${tono(f)}" aria-hidden="true">${esc(inicial(f.perro))}</span>
+        <span class="vip-item-info">
+          <span class="cita-name">${esc(f.perro)}</span>
+          <span class="vip-mini sm">${sellosMini(v.sellos)}</span>
+          <span class="cita-meta">${esc(primerNombre(f.nombre))} · ${esc(vipCorto(f))}</span>
+        </span>
+        <span class="vip-count">${v.sellos}<span>/10</span></span>
+      </button>
+      ${accion ? `<div class="vip-accion">${accion}</div>` : ''}
+    </li>`;
   }
 
   function renderVip() {
@@ -2008,20 +2008,25 @@
     if (!box) return;
     const conSellos = fichas.filter(f => vipDe(f).sellos_total > 0);
     const conPremio = fichas.filter(f => premiosPendientes(f).length);
-    const vencen = vipPorVencer();
-    const ranking = [...conSellos].sort((a, b) => vipDe(b).sellos_total - vipDe(a).sellos_total || norm(a.perro).localeCompare(norm(b.perro)));
-    $('#vipStats').textContent = `${plural(conSellos.length, 'perro con sellos', 'perros con sellos')} · ${plural(canjes.length, 'premio entregado', 'premios entregados')}`;
-    const escribir = f => normWa(f.whatsapp).length === 8 ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensajeVence(f)))}" target="_blank" rel="noopener">Recordarle que vuelva</a>` : '';
+    const vencen = vipPorVencer().filter(f => !conPremio.includes(f));
+    const yaVistos = new Set([...conPremio, ...vencen]);
+    const resto = conSellos.filter(f => !yaVistos.has(f))
+      .sort((a, b) => vipDe(b).sellos_total - vipDe(a).sellos_total || norm(a.perro).localeCompare(norm(b.perro)));
+    $('#vipStats').textContent = `${plural(conSellos.length, 'perrito con sellos', 'perritos con sellos')} · ${plural(canjes.length, 'premio entregado', 'premios entregados')}`;
+    const premiosBtn = f => premiosPendientes(f).map(p => `<button type="button" class="btn btn-sm btn-primary" data-premio="${esc(f.id)}" data-ronda="${p.ronda}" data-hito="${p.hito}">Entregar: ${esc(PREMIO_CORTO[p.hito])}</button>`).join('');
+    const recordar = f => normWa(f.whatsapp).length === 8 ? `<a class="btn btn-sm btn-wa" href="${esc(waLink(f.whatsapp, mensajeVence(f)))}" target="_blank" rel="noopener">Recordarle</a>` : '';
+    const premiosLeyenda = VIP_HITOS.map(h => `<li><span class="hito-n">${h}</span><span>${esc(PREMIO_CORTO[h])}</span></li>`).join('');
     box.innerHTML = `
-      <p class="note">Sello 3: regalito · 5: 10% desc. · 7: hidratante · 10: spa</p>
-      ${conPremio.length ? `<h3 class="group-title">Premios por entregar</h3><ul class="rows">${conPremio.map(f => vipFila(f)).join('')}</ul>` : ''}
-      <h3 class="group-title">Pierden el plazo esta semana</h3>
-      ${vencen.length ? `<ul class="rows">${vencen.map(f => vipFila(f, escribir(f))).join('')}</ul>` : '<p class="mini-empty">Nadie pierde su plazo en los próximos 7 días.</p>'}
-      <h3 class="group-title">Todos los perros con sellos</h3>
-      ${ranking.length ? `<ul class="rows">${ranking.map(f => vipFila(f)).join('')}</ul>` : '<div class="empty"><p>Todavía ningún perro tiene sellos. Se suman solos al entregar un grooming completo.</p></div>'}`;
+      <ul class="hitos" aria-label="Premios por sello">${premiosLeyenda}</ul>
+      ${conPremio.length ? `<h3 class="group-title">Premios por entregar</h3><ul class="vip-list">${conPremio.map(f => vipFila(f, premiosBtn(f))).join('')}</ul>` : ''}
+      ${vencen.length ? `<h3 class="group-title">Pierden su plazo esta semana</h3><ul class="vip-list">${vencen.map(f => vipFila(f, recordar(f))).join('')}</ul>` : ''}
+      ${resto.length ? `<h3 class="group-title">${conPremio.length || vencen.length ? 'Los demás' : 'Perritos con sellos'}</h3><ul class="vip-list">${resto.map(f => vipFila(f)).join('')}</ul>` : ''}
+      ${!conSellos.length ? '<div class="empty"><p>Todavía ningún perrito tiene sellos. Se suman solos al entregar un grooming completo.</p></div>' : ''}`;
   }
 
   $('#vipLista').addEventListener('click', e => {
+    const pf = e.target.closest('[data-perfil]');
+    if (pf) { abrirPerfil(pf.dataset.perfil); return; }
     const pr = e.target.closest('[data-premio]');
     if (pr) { accionPremio(pr).then(renderVip); return; }
     const tj = e.target.closest('[data-tarjeta]');
