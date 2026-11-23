@@ -963,11 +963,15 @@
     const b = [];
     if (c.estado === 'agendada' && c.fecha >= t) {
       b.push(`<button type="button" class="link-btn" data-cita="reprogramar" data-id="${esc(c.id)}">Reprogramar</button>`);
-      b.push(`<button type="button" class="link-btn" data-cita="cancelar" data-id="${esc(c.id)}">Cancelar</button>`);
+      b.push(`<button type="button" class="link-btn" data-cita="cancelar" data-id="${esc(c.id)}">${c.fecha === t ? 'No vino' : 'Cancelar'}</button>`);
       b.push(`<button type="button" class="link-btn danger" data-cita="eliminar" data-id="${esc(c.id)}">Eliminar</button>`);
     }
     if (c.estado === 'cancelada' && c.fecha >= t) {
       b.push(`<button type="button" class="link-btn" data-cita="reactivar" data-id="${esc(c.id)}">Reactivar</button>`);
+    }
+    // Ya está en Katana's: todavía se puede corregir el servicio antes de entregar
+    if (c.estado === 'en_katana') {
+      b.push(`<button type="button" class="link-btn" data-cita="reprogramar" data-id="${esc(c.id)}">Cambiar servicio</button>`);
     }
     // Citas que ya pasaron y nadie cerró: sin esto no suman sello Katana's VIP
     if ((c.estado === 'agendada' || c.estado === 'en_katana') && c.fecha < t) {
@@ -1173,7 +1177,7 @@
     if (!c) return;
     if (act === 'reprogramar') { abrirReprogramar(c); return; }
     if (act === 'cancelar') {
-      const pasada = c.fecha < today();
+      const pasada = c.fecha <= today();
       if (!confirm(pasada
         ? `¿Marcar que ${c.perro} no vino el ${fmtDay(c.fecha)}? Queda en el historial como cancelada.`
         : `¿Cancelar la cita de ${c.perro} del ${fmtDay(c.fecha)}, ${hora12(c.hora)}? Queda en el historial como cancelada.`)) return;
