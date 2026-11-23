@@ -25,6 +25,17 @@
   const TRANQUILO = 'Es tranquilo';
   const FRECUENCIAS = ['Cada 2 semanas', 'Cada mes', 'Cada 2 meses', 'De vez en cuando'];
 
+  // Programa de lealtad Amigo VIP (las reglas de cálculo viven en supabase/amigo_vip.sql)
+  const VIP_LANZAMIENTO = '2026-11-23';
+  const VIP_DIAS = 30;
+  const VIP_HITOS = [3, 5, 7, 10];
+  const VIP_PREMIOS = {
+    3: 'Regalito sorpresa',
+    5: '10% de descuento en el grooming completo',
+    7: 'Tratamiento hidratante de manto gratis',
+    10: 'Experiencia Spa gratis'
+  };
+
   // ---------- Pasos ----------
   const STEPS = {
     cita: {
@@ -205,6 +216,8 @@
   let citas = [];
   let fichas = [];
   let avisos = [];
+  let vip = {};      // estado Amigo VIP por ficha_id (vista amigo_vip)
+  let canjes = [];   // premios entregados
   const findFicha = (wa, perro) => fichas.find(f => keyOf(f.whatsapp, f.perro) === keyOf(wa, perro));
   const fichaDe = c => (c.ficha_id ? fichas.find(x => x.id === c.ficha_id) : null) || findFicha(c.whatsapp, c.perro) || null;
   const conflictos = (fecha, hora, exceptoId, wa) => citas.filter(c =>
@@ -213,18 +226,83 @@
 
   async function loadAll() {
     const desde = new Date(Date.now() - 180 * 864e5).toISOString();
-    const [f, c, a] = await Promise.all([
+    const [f, c, a, v, k] = await Promise.all([
       sb.from('fichas').select('*').order('perro'),
       sb.from('citas').select('*').order('fecha').order('hora'),
-      sb.from('avisos').select('*').gte('creado', desde)
+      sb.from('avisos').select('*').or(`creado.gte."${desde}",tipo.eq.amigo_vip`),
+      sb.from('amigo_vip').select('*'),
+      sb.from('canjes').select('*')
     ]);
-    if (f.error) throw f.error;
-    if (c.error) throw c.error;
-    if (a.error) throw a.error;
+    for (const r of [f, c, a, v, k]) if (r.error) throw r.error;
     fichas = f.data;
     citas = c.data.map(x => ({ ...x, hora: hhmm(x.hora) }));
     avisos = a.data;
+    vip = Object.fromEntries(v.data.map(x => [x.ficha_id, x]));
+    canjes = k.data;
     updateCount();
+  }
+
+  // Solo recarga los sellos y premios (después de entregar un perro o marcar un premio)
+  async function loadVip() {
+    const [v, k] = await Promise.all([sb.from('amigo_vip').select('*'), sb.from('canjes').select('*')]);
+    if (v.error) throw v.error;
+    if (k.error) throw k.error;
+    vip = Object.fromEntries(v.data.map(x => [x.ficha_id, x]));
+    canjes = k.data;
+  }
+
+  // ---------- Amigo VIP ----------
+  const VIP_VACIO = { sellos_total: 0, ronda: 1, sellos: 0, ultima_visita: null, vence: null, ultima_sumo: false };
+  const vipDe = f => (f && vip[f.id]) || VIP_VACIO;
+  const esGroomingCompleto = serv => asList(serv).some(s => norm(s).startsWith('grooming completo'));
+  const diasEntre = (a, b) => Math.round((new Date(b + 'T12:00') - new Date(a + 'T12:00')) / 864e5);
+  const tarjetaUrl = f => `${location.origin}/tarjeta.html?c=${encodeURIComponent(f.codigo)}`;
+  const premioTxt = h => VIP_PREMIOS[h];
+
+  // Premios ganados que todavía no se marcan como entregados
+  function premiosPendientes(f) {
+    if (!f) return [];
+    const v = vipDe(f), out = [];
+    for (let r = 1; r <= v.ronda; r++) {
+      const hasta = r < v.ronda ? 10 : v.sellos;
+      for (const h of VIP_HITOS) {
+        if (h <= hasta && !canjes.some(k => k.ficha_id === f.id && k.ronda === r && k.hito === h)) out.push({ ronda: r, hito: h });
+      }
+    }
+    return out;
+  }
+
+  // Qué va a pasar con la tarjeta cuando se entregue esta cita
+  function vipPrevision(c) {
+    const f = fichaDe(c);
+    if (!f || c.estado === 'entregada' || c.estado === 'cancelada' || c.fecha < VIP_LANZAMIENTO) return null;
+    const v = vipDe(f);
+    if (!esGroomingCompleto(c.servicios)) return { suma: false, motivo: 'No suma sello: solo cuenta el grooming completo' };
+    if (v.ultima_visita === c.fecha && v.ultima_sumo) return { suma: false, motivo: 'Ya sumó su sello de hoy' };
+    if (v.ultima_visita && diasEntre(v.ultima_visita, c.fecha) > VIP_DIAS) {
+      return { suma: false, motivo: `No suma sello: pasaron ${diasEntre(v.ultima_visita, c.fecha)} días desde su última visita (conserva sus ${v.sellos})` };
+    }
+    const total = v.sellos_total + 1;
+    const sello = (total - 1) % 10 + 1;
+    return { suma: true, ronda: Math.floor((total - 1) / 10) + 1, sello, premio: VIP_PREMIOS[sello] ? sello : null };
+  }
+
+  // Resumen de la tarjeta para mostrar en la ficha
+  function vipResumen(f) {
+    const v = vipDe(f);
+    if (!v.sellos_total) return 'Amigo VIP: sin sellos todavía';
+    const ronda = v.ronda > 1 ? ` (tarjeta ${v.ronda})` : '';
+    const plazo = v.sellos === 10 ? 'tarjeta completa'
+      : v.vence >= today() ? `suma si vuelve antes del ${fmtDay(v.vence)}`
+      : 'pasó la fecha: la próxima visita no suma, pero conserva sus sellos';
+    return `Amigo VIP: ${v.sellos} de 10 sellos${ronda} · ${plazo}`;
+  }
+
+  async function marcarPremio(f, p, citaId = null) {
+    const { data, error } = await sb.from('canjes').insert({ ficha_id: f.id, ronda: p.ronda, hito: p.hito, cita_id: citaId }).select().single();
+    if (error && error.code !== '23505') return false;
+    if (data) canjes.push(data);
+    return true;
   }
 
   async function upsertFicha(data) {
@@ -798,13 +876,21 @@
       const visitas = citas.filter(c => c.ficha_id === f.id && c.estado !== 'cancelada');
       const ultima = visitas.map(c => c.fecha).filter(d => d <= today()).sort().pop();
       const alerts = alertsFor(f);
+      const pend = premiosPendientes(f);
+      const v = vipDe(f);
       return `<li class="row ficha"><div>
         <p class="name">${esc(f.perro)}</p>
         <p class="meta">${esc([f.raza, f.tamano].filter(Boolean).join(' · '))}</p>
         <p class="meta">${esc(f.nombre)} · ${esc(f.whatsapp)}</p>
         <p class="meta">${plural(visitas.length, 'cita', 'citas')}${ultima ? ` · última: ${esc(fmtDay(ultima))}` : ''} · ${f.frecuencia ? esc(f.frecuencia.toLowerCase()) : '<strong>sin frecuencia</strong>'}</p>
-        ${alerts.length ? `<ul class="tags">${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>` : ''}
-        <div class="row-links"><button type="button" class="link-btn" data-ficha="${esc(f.id)}">Editar ficha</button></div>
+        <div class="vip-mini" aria-label="${esc(`${v.sellos} de 10 sellos`)}">${sellosMini(v.sellos)}</div>
+        <p class="meta vip-meta">${esc(vipResumen(f))}</p>
+        ${alerts.length || pend.length ? `<ul class="tags">${pend.map(p => `<li class="tag premio">Premio por entregar: ${esc(premioTxt(p.hito))}</li>`).join('')}${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>` : ''}
+        <div class="row-links">
+          <button type="button" class="link-btn" data-ficha="${esc(f.id)}">Editar ficha</button>
+          ${normWa(f.whatsapp).length === 8 ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensaje({ tipo: 'amigo_vip', ficha: f })))}" target="_blank" rel="noopener" data-tarjeta="${esc(f.id)}">Enviar tarjeta</a>` : ''}
+          ${pend.map(p => `<button type="button" class="link-btn" data-premio="${esc(f.id)}" data-ronda="${p.ronda}" data-hito="${p.hito}">Marcar premio entregado (sello ${p.hito})</button>`).join('')}
+        </div>
       </div></li>`;
     }).join('')}</ul>`;
   }
@@ -834,9 +920,36 @@
     }
   }
 
+  // Huellitas de la tarjeta en miniatura (10 círculos)
+  const sellosMini = n => Array.from({ length: 10 }, (_, i) =>
+    `<span class="vip-dot${i < n ? ' on' : ''}${VIP_HITOS.includes(i + 1) ? ' hito' : ''}" aria-hidden="true"></span>`).join('');
+
+  async function accionPremio(b) {
+    const f = fichas.find(x => x.id === b.dataset.premio);
+    if (!f) return;
+    const p = { ronda: Number(b.dataset.ronda), hito: Number(b.dataset.hito) };
+    if (!confirm(`¿Ya se le dio a ${f.perro} el premio del sello ${p.hito}: ${premioTxt(p.hito)}?`)) return;
+    b.disabled = true;
+    const ok = await marcarPremio(f, p);
+    b.disabled = false;
+    if (!ok) { toast('No se pudo marcar el premio. Revisa tu conexión.'); return; }
+    renderRegistros(); renderHoy();
+    toast(`Premio de ${f.perro} marcado como entregado`);
+  }
+
+  // "Enviar tarjeta" desde la ficha también cuenta como bienvenida enviada
+  function tarjetaEnviada(id) {
+    const f = fichas.find(x => x.id === id);
+    if (f && !avisoDe('amigo_vip', 'whatsapp', { ficha: f })) setTimeout(() => registrarAviso({ tipo: 'amigo_vip', ficha: f }, 'whatsapp', false, false), 300);
+  }
+
   $('#list').addEventListener('click', e => {
     const b = e.target.closest('[data-cita]');
     if (b) { accionCita(b.dataset.cita, b.dataset.id); return; }
+    const pr = e.target.closest('[data-premio]');
+    if (pr) { accionPremio(pr); return; }
+    const tj = e.target.closest('[data-tarjeta]');
+    if (tj) { tarjetaEnviada(tj.dataset.tarjeta); return; }
     const f = e.target.closest('[data-ficha]');
     if (f) abrirEditarFicha(fichas.find(x => x.id === f.dataset.ficha));
   });
@@ -974,6 +1087,28 @@
     return ws;
   }
 
+  // Hoja "Amigo VIP": una fila por perro, armada con los datos reales (nadie la llena a mano)
+  const VIP_COLS = [
+    ['perro', 'Perro'], ['nombre', 'Tutor'], ['whatsapp', 'WhatsApp'], ['vip_tarjeta', 'Tarjeta n.º'],
+    ['vip_sellos', 'Sellos (de 10)'], ['vip_total', 'Sellos acumulados'], ['vip_ultima', 'Última visita que cuenta'],
+    ['vip_vence', 'Suma si vuelve antes del'], ['vip_proximo', 'Próximo premio'], ['vip_pendientes', 'Premios por entregar'],
+    ['vip_entregados', 'Premios entregados'], ['vip_sin_sello', 'Visitas que no sumaron'], ['vip_enlace', 'Enlace de la tarjeta']
+  ];
+  function filaVip(f) {
+    const v = vipDe(f);
+    const prox = VIP_HITOS.find(h => h > v.sellos);
+    return {
+      perro: f.perro, nombre: f.nombre, whatsapp: f.whatsapp,
+      vip_tarjeta: v.ronda, vip_sellos: v.sellos, vip_total: v.sellos_total,
+      vip_ultima: v.ultima_visita || '', vip_vence: v.vence || '',
+      vip_proximo: prox ? `Sello ${prox}: ${premioTxt(prox)}` : 'Tarjeta completa',
+      vip_pendientes: premiosPendientes(f).map(p => premioTxt(p.hito)).join(', '),
+      vip_entregados: canjes.filter(k => k.ficha_id === f.id).length,
+      vip_sin_sello: v.visitas_sin_sello || 0,
+      vip_enlace: tarjetaUrl(f)
+    };
+  }
+
   $('#export').addEventListener('click', async () => {
     const btn = $('#export');
     btn.disabled = true; btn.textContent = 'Preparando…';
@@ -986,6 +1121,7 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedCitas, CITA_COLS), 'Citas');
       XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedFichas, FICHA_COLS), 'Fichas');
+      XLSX.utils.book_append_sheet(wb, sheetXlsx(sortedFichas.map(filaVip), VIP_COLS), 'Amigo VIP');
       XLSX.writeFile(wb, `Katanas_Grooming_Citas_y_Clientes_${today()}.xlsx`);
       renderRegistros();
       toast('Excel descargado');
@@ -1060,8 +1196,8 @@
   // ---------- Hoy: check-in, check-out y mensajes ----------
   const FREC_DIAS = { 'Cada 2 semanas': 14, 'Cada mes': 30, 'Cada 2 meses': 60 };
   const TIEMPO_TXT = { 14: 'pasaron dos semanas', 30: 'pasó un mes', 60: 'pasaron dos meses' };
-  const TIPO_AVISO = { listo: 'Listo para recoger', dia_antes: 'Cita de mañana', confirmacion: 'Confirmación de cita', toca_volver: 'Le toca volver' };
-  const ORDEN_AVISO = { listo: 0, dia_antes: 1, confirmacion: 2, toca_volver: 3 };
+  const TIPO_AVISO = { listo: 'Listo para recoger', dia_antes: 'Cita de mañana', confirmacion: 'Confirmación de cita', toca_volver: 'Le toca volver', amigo_vip: 'Bienvenida Amigo VIP' };
+  const ORDEN_AVISO = { listo: 0, dia_antes: 1, confirmacion: 2, toca_volver: 3, amigo_vip: 4 };
 
   const perrosDe = item => { const l = (item.citas || [item.cita]).map(c => c.perro); return l.length < 2 ? l[0] : l.slice(0, -1).join(', ') + ' y ' + l[l.length - 1]; };
   const conPunto = t => t.endsWith('.') ? t : t + '.';
@@ -1092,16 +1228,52 @@
     }
     if (item.tipo === 'listo') {
       const varios = (item.citas || []).length > 1;
-      return `${hola} ${perrosDe(item)} ya ${varios ? 'están listos y le esperan' : 'está listo y le espera'} en Katana's Grooming. Le recordamos que, pasada 1 hora, se aplica un recargo de $1 por hora.`;
+      const base = `${hola} ${perrosDe(item)} ya ${varios ? 'están listos y le esperan' : 'está listo y le espera'} en Katana's Grooming. Le recordamos que, pasada 1 hora, se aplica un recargo de $1 por hora.`;
+      const vipLineas = (item.citas || [c]).map(lineaVipListo).filter(Boolean);
+      return [base, ...vipLineas].join('\n\n');
+    }
+    if (item.tipo === 'amigo_vip') {
+      const v = vipDe(f);
+      const inicio = v.sellos_total === 1 && v.ultima_visita && v.ultima_visita < VIP_LANZAMIENTO
+        ? `${f.perro} ya es *Amigo VIP* de Katana's Grooming. Por su visita de noviembre, le regalamos su primer sello.`
+        : v.sellos_total
+          ? `${f.perro} es *Amigo VIP* de Katana's Grooming y lleva ${plural(v.sellos, 'sello', 'sellos')} de 10.`
+          : `${f.perro} ya es *Amigo VIP* de Katana's Grooming. Su tarjeta empieza a llenarse con su próximo grooming completo.`;
+      const lineas = [
+        `${hola} ${inicio}`,
+        'Cada grooming completo suma un sello si vuelve dentro de los 30 días después de su visita anterior. En la visita 3 recibe un regalito sorpresa; en la 5, un 10% de descuento; en la 7, un tratamiento hidratante de manto gratis, y en la 10, una experiencia spa gratis.',
+        `Aquí puede ver su tarjeta: ${tarjetaUrl(f)}`
+      ];
+      if (v.vence && v.vence >= today() && v.sellos < 10) lineas.push(`Para que su próxima visita sume, reserve antes del ${fmtLong(v.vence)}.`);
+      return lineas.join('\n\n');
     }
     return `${hola} Ya ${TIEMPO_TXT[item.dias] || 'pasó un tiempo'} desde la última visita de ${f.perro} a Katana's Grooming. ¿Le agendamos la próxima? Respóndanos con el día y la hora que le quedan mejor.`;
+  }
+
+  // Línea de Amigo VIP en el mensaje "Listo para recoger" (después de entregar, con los sellos ya sumados)
+  function lineaVipListo(c) {
+    const f = fichaDe(c);
+    if (!f || c.fecha < VIP_LANZAMIENTO || !esGroomingCompleto(c.servicios)) return '';
+    const v = vipDe(f);
+    if (v.ultima_visita !== c.fecha) return '';
+    const enlace = `Vea su tarjeta: ${tarjetaUrl(f)}`;
+    if (!v.ultima_sumo) {
+      return `Esta visita no sumó sello Amigo VIP porque pasaron más de 30 días desde la anterior, pero ${f.perro} conserva sus ${plural(v.sellos, 'sello', 'sellos')}. Si vuelve antes del ${fmtLong(v.vence)}, suma. ${enlace}`;
+    }
+    const premio = VIP_PREMIOS[v.sellos] ? ` Con este sello ganó: *${premioTxt(v.sellos).toLowerCase()}*.` : '';
+    const sigue = v.sellos === 10
+      ? ` ¡Completó su tarjeta! Con su próximo grooming completo empieza una nueva.`
+      : ` Su próxima visita suma si es antes del ${fmtLong(v.vence)}.`;
+    return `Con esta visita, ${f.perro} lleva *${v.sellos} de 10 sellos Amigo VIP*.${premio}${sigue} ${enlace}`;
   }
 
   // Vista previa: las negritas de WhatsApp se muestran como negritas
   const vistaPrevia = texto => esc(texto).replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>');
 
   const avisoDe = (tipo, canal, item) => avisos.find(a => a.tipo === tipo && a.canal === canal && (
-    tipo === 'toca_volver' ? a.ficha_id === item.ficha.id && a.ref_fecha === item.ref : a.cita_id === item.cita.id));
+    tipo === 'toca_volver' ? a.ficha_id === item.ficha.id && a.ref_fecha === item.ref
+    : tipo === 'amigo_vip' ? a.ficha_id === item.ficha.id
+    : a.cita_id === item.cita.id));
 
   // Junta en un solo mensaje los perros del mismo cliente con cita a la misma hora
   function agrupar(items) {
@@ -1140,6 +1312,12 @@
       if (!ult || addDays(ult, dias) > t) continue;
       const item = { tipo: 'toca_volver', ficha: f, ref: ult, dias };
       if (!avisoDe('toca_volver', 'whatsapp', item)) out.push(item);
+    }
+    // Bienvenida a Amigo VIP: una sola vez por perro, cuando ya tiene al menos un sello
+    for (const f of fichas) {
+      if (f.recordatorios === false || normWa(f.whatsapp).length !== 8 || !vipDe(f).sellos_total) continue;
+      const item = { tipo: 'amigo_vip', ficha: f };
+      if (!avisoDe('amigo_vip', 'whatsapp', item)) out.push(item);
     }
     return agrupar(out).sort((a, b) => ORDEN_AVISO[a.tipo] - ORDEN_AVISO[b.tipo]);
   }
@@ -1209,10 +1387,14 @@
     let acciones = '';
     if (abierto?.id === c.id) {
       const llegada = abierto.act === 'recibir';
+      const premios = llegada ? [] : premiosAlEntregar(c);
       acciones = `<div class="inline-form">
         <label for="nota-${esc(c.id)}">${llegada ? '¿Cómo llegó y qué dejó?' : '¿Qué se le hizo? ¿Algo que contarle al dueño?'} <span class="opt">opcional</span></label>
         <p class="hint">${llegada ? 'Nudos, heridas, pulgas o garrapatas; collar, correa o juguete.' : 'Por ejemplo: se le encontró una herida, se portó muy bien.'}</p>
         <textarea id="nota-${esc(c.id)}" rows="2"></textarea>
+        ${premios.length ? `<fieldset class="vip-premios"><legend>Premios Amigo VIP</legend>
+          ${premios.map((p, i) => `<label class="consent"><input type="checkbox" name="premio-${esc(c.id)}" value="${i}" checked><span>Se le dio: ${esc(premioTxt(p.hito))} (sello ${p.hito})</span></label>`).join('')}
+        </fieldset>` : ''}
         <div class="row-actions">
           <button type="button" class="btn btn-primary btn-sm" data-act="${llegada ? 'ok-recibir' : 'ok-entregar'}" data-id="${esc(c.id)}">${llegada ? 'Confirmar llegada' : 'Confirmar entrega'}</button>
           <button type="button" class="link-btn" data-act="cerrar" data-id="${esc(c.id)}">Cancelar</button>
@@ -1235,9 +1417,45 @@
         <p class="name">${esc(c.perro)}</p>
         <p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
         <ul class="tags"><li class="tag estado">${esc(est)}</li>${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>
+        ${vipHoy(c)}
         ${notas}${acciones}
       </div>
     </li>`;
+  }
+
+  // Premios que se pueden marcar al entregar: el de esta visita (si toca) y los que quedaron pendientes
+  function premiosAlEntregar(c) {
+    const f = fichaDe(c);
+    if (!f) return [];
+    const out = premiosPendientes(f);
+    const pv = vipPrevision(c);
+    if (pv?.suma && pv.premio) out.push({ ronda: pv.ronda, hito: pv.premio, ahora: true });
+    return out;
+  }
+
+  // Lo que el equipo necesita saber de Amigo VIP en cada cita de hoy
+  function vipHoy(c) {
+    const f = fichaDe(c);
+    if (!f || c.estado === 'cancelada') return '';
+    const v = vipDe(f);
+    const items = [];
+    if (c.estado === 'entregada') {
+      if (c.fecha >= VIP_LANZAMIENTO && esGroomingCompleto(c.servicios) && v.ultima_visita === c.fecha) {
+        items.push(v.ultima_sumo
+          ? `<li class="tag vip">Amigo VIP: sumó el sello ${v.sellos} de 10</li>`
+          : `<li class="tag vip-no">Amigo VIP: esta visita no sumó (más de 30 días)</li>`);
+      }
+    } else {
+      const pv = vipPrevision(c);
+      if (pv?.suma) {
+        items.push(`<li class="tag vip">Amigo VIP: esta visita es el sello ${pv.sello} de 10</li>`);
+        if (pv.premio) items.push(`<li class="tag premio">Premio de hoy: ${esc(premioTxt(pv.premio))}</li>`);
+      } else if (pv) {
+        items.push(`<li class="tag vip-no">${esc(pv.motivo)}</li>`);
+      }
+    }
+    for (const p of premiosPendientes(f)) items.push(`<li class="tag premio">Premio por entregar: ${esc(premioTxt(p.hito))}</li>`);
+    return items.length ? `<ul class="tags">${items.join('')}</ul>` : '';
   }
 
   let pendLista = [];
@@ -1264,7 +1482,9 @@
           const perro = it.citas ? perrosDe(it) : (c?.perro || f?.perro);
           const cliente = c?.cliente || f?.nombre || 'Cliente sin ficha';
           const num = c?.whatsapp || f?.whatsapp;
-          const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}` : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
+          const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}`
+            : it.tipo === 'amigo_vip' ? `${vipDe(f).sellos} de 10 sellos`
+            : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
           const etiqueta = it.atrasado ? 'Recordatorio atrasado · la cita es hoy' : TIPO_AVISO[it.tipo];
           return `<li class="row msg tipo-${it.tipo}${it.atrasado ? ' atrasado' : ''}"><div>
             <p class="msg-type">${esc(etiqueta)}</p>
@@ -1324,7 +1544,22 @@
     const nota = ($(`#nota-${CSS.escape(id)}`)?.value || '').trim() || null;
     b.disabled = true;
     if (act === 'ok-recibir') await actualizarCita(id, { estado: 'en_katana', llegada: new Date().toISOString(), nota_llegada: nota }, `${c.perro} llegó`);
-    if (act === 'ok-entregar') await actualizarCita(id, { estado: 'entregada', salida: new Date().toISOString(), nota_salida: nota }, `${c.perro} entregado. Avísale al dueño en "Mensajes por enviar".`);
+    if (act === 'ok-entregar') {
+      // Premios marcados en el formulario de entrega (se calculan antes de entregar)
+      const posibles = premiosAlEntregar(c);
+      const marcados = $$(`[name="premio-${CSS.escape(id)}"]:checked`).map(i => posibles[Number(i.value)]).filter(Boolean);
+      const ok = await actualizarCita(id, { estado: 'entregada', salida: new Date().toISOString(), nota_salida: nota }, null);
+      if (ok) {
+        const f = fichaDe(c);
+        let fallo = false;
+        for (const p of marcados) if (!(await marcarPremio(f, p, p.ahora ? id : null))) fallo = true;
+        try { await loadVip(); } catch { /* sin conexión: se actualiza al recargar */ }
+        updateCount(); renderHoy();
+        toast(fallo
+          ? `${c.perro} entregado, pero no se pudo marcar el premio. Márcalo desde su ficha.`
+          : `${c.perro} entregado. Avísale al dueño en "Mensajes por enviar".`);
+      }
+    }
     b.disabled = false;
   });
 
@@ -1425,7 +1660,7 @@
   async function onSession(session) {
     if (!session) {
       started = false;
-      citas = []; fichas = []; avisos = [];
+      citas = []; fichas = []; avisos = []; vip = {}; canjes = [];
       $('#loginPass').value = '';
       showView('login');
       return;

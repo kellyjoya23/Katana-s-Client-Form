@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#664EFC">
+  <meta name="robots" content="noindex">
+  <title>Tarjeta Amigo VIP · Katana's Grooming</title>
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="Amigo VIP">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Days+One&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tarjeta.css">
+  <script src="vendor/supabase-2.118.0.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="tarjeta.js" defer></script>
+</head>
+<body>
+  <main class="wrap">
+    <header class="marca">
+      <span class="marca-k" aria-hidden="true">K</span>
+      <span class="marca-txt"><span class="marca-nombre">Katana's</span><span class="marca-sub">PELUQUERÍA CANINA</span></span>
+    </header>
+
+    <p class="estado" id="cargando">Cargando tu tarjeta…</p>
+
+    <section class="pase" id="pase" hidden aria-labelledby="perro">
+      <p class="pill">Amigo VIP</p>
+      <h1 class="perro" id="perro"></h1>
+      <p class="tutor" id="tutor"></p>
+
+      <ol class="sellos" id="sellos" aria-label="Sellos de la tarjeta"></ol>
+
+      <p class="cuenta" id="cuenta"></p>
+      <p class="plazo" id="plazo"></p>
+
+      <a class="reservar" id="reservar" href="https://wa.me/50371616881" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+    </section>
+
+    <section class="bloque" id="premiosBloque" hidden aria-labelledby="tPremios">
+      <h2 id="tPremios">Tus premios</h2>
+      <ul class="premios" id="premios"></ul>
+    </section>
+
+    <section class="bloque" id="condiciones" hidden aria-labelledby="tCond">
+      <h2 id="tCond">Condiciones del programa</h2>
+      <ul class="cond">
+        <li>Válido solo en nuestro local.</li>
+        <li>Cada grooming completo pagado suma un sello.</li>
+        <li>Para sumar un sello nuevo, tu perrito tiene que volver en un máximo de 30 días desde su visita anterior.</li>
+        <li>Si pasan más de 30 días, esa visita no suma sello, pero conservas los anteriores.</li>
+        <li>Los premios no se acumulan con otras promociones.</li>
+        <li>No aplica a servicios a domicilio.</li>
+      </ul>
+      <p class="guardar"><strong>Guárdala en tu teléfono.</strong> En iPhone, toca Compartir y luego "Añadir a pantalla de inicio". En Android, abre el menú del navegador y toca "Agregar a la pantalla principal". Tus sellos se actualizan solos cada vez que la abres.</p>
+    </section>
+
+    <section class="bloque" id="error" hidden>
+      <h1 class="perro">No encontramos esta tarjeta</h1>
+      <p>Revisa que el enlace esté completo o pídelo de nuevo a Katana's por WhatsApp.</p>
+      <a class="reservar" href="https://wa.me/50371616881" target="_blank" rel="noopener">Escribir a Katana's</a>
+    </section>
+
+    <p class="pie">Katana's Grooming · Reservas: 7161-6881</p>
+  </main>
+</body>
+</html>

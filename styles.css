@@ -394,3 +394,18 @@ main:focus { outline: none; }
 }
 
 .msg-text { white-space: pre-line; }
+
+/* ---------- Amigo VIP ---------- */
+.tag.vip { background: var(--morado); color: var(--blanco); }
+.tag.vip-no { background: var(--fondo); color: var(--tinta); border: 1.5px dashed var(--edge); }
+.tag.premio { background: var(--naranja-claro); color: var(--tinta); border: 1.5px solid var(--naranja); }
+.vip-mini { display: flex; gap: 4px; margin: 8px 0 0; }
+.vip-dot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--lila); background: #fff; }
+.vip-dot.hito { border-color: var(--naranja); }
+.vip-dot.on { background: var(--morado); border-color: var(--morado); }
+.vip-dot.on.hito { background: var(--naranja); border-color: var(--naranja); }
+.vip-meta { font-weight: 600; color: var(--tinta); }
+.vip-premios { border: 0; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.vip-premios legend { font-weight: 700; font-size: 15px; margin-bottom: 6px; padding: 0; }
+.vip-premios .consent { padding: 10px 12px; font-size: 15px; font-weight: 600; }
+a.link-btn { display: inline-flex; align-items: center; }
