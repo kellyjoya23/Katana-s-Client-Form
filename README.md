@@ -14,6 +14,8 @@ App web para que el equipo de Katana's registre cada cita y, de paso, arme la ba
 | `icons/`, `manifest.webmanifest` | Ícono y nombre de la app al agregarla a la pantalla de inicio |
 | `vercel.json` | Encabezados de seguridad (política de contenido, bloqueo de iframes) |
 | `supabase/schema.sql` | Tablas y reglas de seguridad de la base de datos |
+| `supabase/google_calendar.sql` | Aviso a Google Calendar al crear, mover o cancelar citas |
+| `integraciones/google-calendar/` | Script de Google (Apps Script) e instrucciones para el calendario de Katana's |
 | `supabase/amigo_vip.sql` | Programa de lealtad Katana's VIP (se ejecuta después de `schema.sql`) |
 | `tarjeta.html`, `tarjeta.css`, `tarjeta.js` | Tarjeta Katana's VIP que ve el cliente |
 
