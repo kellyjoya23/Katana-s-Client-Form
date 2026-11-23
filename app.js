@@ -307,6 +307,14 @@
     return `Amigo VIP: ${v.sellos} de 10 sellos${ronda} · ${plazo}`;
   }
 
+  // Versión corta para listas
+  function vipCorto(f) {
+    const v = vipDe(f);
+    if (v.sellos === 10) return 'tarjeta completa';
+    if (!v.vence) return 'sin sellos';
+    return v.vence >= today() ? `vuelve antes del ${fmtDay(v.vence)}` : 'pasó su plazo';
+  }
+
   async function marcarPremio(f, p, citaId = null) {
     const { data, error } = await sb.from('canjes').insert({ ficha_id: f.id, ronda: p.ronda, hito: p.hito, cita_id: citaId }).select().single();
     if (error && error.code !== '23505') return false;
@@ -1452,46 +1460,72 @@
     }
   }
 
+  // Indicador de 3 pasos: por llegar → en Katana's → entregado
+  const PASOS = [['agendada', 'Por llegar'], ['en_katana', "En Katana's"], ['entregada', 'Entregado']];
+  function pasos(estado) {
+    const i = PASOS.findIndex(([k]) => k === estado);
+    return `<span class="pasos" aria-label="Estado: ${esc(PASOS[i]?.[1] || '')}">
+      ${PASOS.map((_, j) => `<span class="paso${j <= i ? ' on' : ''}" aria-hidden="true"></span>`).join('')}
+      <span class="paso-txt">${esc(PASOS[i]?.[1] || '')}</span></span>`;
+  }
+
+  const inicial = n => (String(n || '?').trim()[0] || '?').toUpperCase();
+  const PREMIO_CORTO = { 3: 'Regalito', 5: '10% desc.', 7: 'Hidratante', 10: 'Spa' };
+
   function hoyRow(c) {
     const f = fichaDe(c);
     const alerts = alertsFor(f);
-    const est = { agendada: 'Por llegar', en_katana: "En Katana's", entregada: 'Entregado' }[c.estado] || ESTADO_LABEL[c.estado];
-    let acciones = '';
+    let cta = '', form = '';
     if (abierto?.id === c.id) {
       const llegada = abierto.act === 'recibir';
       const premios = llegada ? [] : premiosAlEntregar(c);
-      acciones = `<div class="inline-form">
-        <label for="nota-${esc(c.id)}">${llegada ? '¿Cómo llegó y qué dejó?' : '¿Qué se le hizo? ¿Algo que contarle al dueño?'} <span class="opt">opcional</span></label>
-        <p class="hint">${llegada ? 'Nudos, heridas, pulgas o garrapatas; collar, correa o juguete.' : 'Por ejemplo: se le encontró una herida, se portó muy bien.'}</p>
-        <textarea id="nota-${esc(c.id)}" rows="2"></textarea>
+      form = `<div class="inline-form">
+        <label for="nota-${esc(c.id)}">${llegada ? '¿Cómo llegó y qué dejó?' : '¿Algo que contarle al dueño?'} <span class="opt">opcional</span></label>
+        <textarea id="nota-${esc(c.id)}" rows="2" placeholder="${llegada ? 'Nudos, heridas, collar, juguete…' : 'Se portó muy bien…'}"></textarea>
         ${premios.length ? `<fieldset class="vip-premios"><legend>Premios Amigo VIP</legend>
-          ${premios.map((p, i) => `<label class="consent"><input type="checkbox" name="premio-${esc(c.id)}" value="${i}" checked><span>Se le dio: ${esc(premioTxt(p.hito))} (sello ${p.hito})</span></label>`).join('')}
+          ${premios.map((p, i) => `<label class="consent"><input type="checkbox" name="premio-${esc(c.id)}" value="${i}" checked><span>Se le dio: ${esc(premioTxt(p.hito))}</span></label>`).join('')}
         </fieldset>` : ''}
         <div class="row-actions">
           <button type="button" class="btn btn-primary btn-sm" data-act="${llegada ? 'ok-recibir' : 'ok-entregar'}" data-id="${esc(c.id)}">${llegada ? 'Confirmar llegada' : 'Confirmar entrega'}</button>
           <button type="button" class="link-btn" data-act="cerrar" data-id="${esc(c.id)}">Cancelar</button>
         </div></div>`;
     } else if (c.estado === 'agendada') {
-      acciones = `<div class="row-actions">
-        <button type="button" class="btn btn-primary btn-sm" data-act="recibir" data-id="${esc(c.id)}">Recibir</button>
-        <button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}">Reprogramar</button>
-        <button type="button" class="link-btn" data-act="novino" data-id="${esc(c.id)}">No vino</button></div>`;
+      cta = `<button type="button" class="btn btn-primary btn-sm" data-act="recibir" data-id="${esc(c.id)}">Recibir</button>`;
     } else if (c.estado === 'en_katana') {
-      acciones = `<div class="row-actions"><button type="button" class="btn btn-primary btn-sm" data-act="entregar" data-id="${esc(c.id)}">Entregar</button></div>`;
+      cta = `<button type="button" class="btn btn-primary btn-sm" data-act="entregar" data-id="${esc(c.id)}">Entregar</button>`;
+    } else if (c.estado === 'entregada') {
+      cta = `<span class="listo-ico" title="Entregado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="sr-only">Entregado</span></span>`;
     }
-    const notas = [
-      c.llegada ? `Llegó a las ${horaDe(c.llegada)}${c.nota_llegada ? ': ' + c.nota_llegada : ''}` : '',
-      c.salida ? `Entregado a las ${horaDe(c.salida)}${c.nota_salida ? ': ' + c.nota_salida : ''}` : ''
-    ].filter(Boolean).map(t => `<p class="meta">${esc(t)}</p>`).join('');
-    return `<li class="row hoy-row estado-${esc(c.estado)}">
-      <div class="when"><span class="h">${esc(hora12(c.hora))}</span>${c.fecha !== today() ? `<span class="d">${esc(fmtDay(c.fecha))}</span>` : ''}</div>
-      <div>
-        <p class="name">${esc(c.perro)}</p>
-        <p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
-        <ul class="tags"><li class="tag estado">${esc(est)}</li>${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>
-        ${vipHoy(c)}
-        ${notas}${acciones}
+
+    // Chips: solo lo indispensable a la vista
+    const chips = [];
+    const vc = vipChip(c, f);
+    if (vc) chips.push(vc);
+    if (alerts.length) chips.push(`<span class="chip-s alerta">${esc(alerts[0])}${alerts.length > 1 ? ` +${alerts.length - 1}` : ''}</span>`);
+
+    // Detalles escondidos
+    const detalle = [
+      ...alerts.map(a => `<li>${esc(a)}</li>`),
+      ...vipDetalle(c, f).map(t => `<li>${esc(t)}</li>`),
+      c.cliente ? `<li>Cliente: ${esc(c.cliente)} · ${esc(fmtWa(c.whatsapp))}</li>` : '',
+      c.llegada ? `<li>Llegó a las ${esc(horaDe(c.llegada))}${c.nota_llegada ? ': ' + esc(c.nota_llegada) : ''}</li>` : '',
+      c.salida ? `<li>Entregado a las ${esc(horaDe(c.salida))}${c.nota_salida ? ': ' + esc(c.nota_salida) : ''}</li>` : ''
+    ].filter(Boolean).join('');
+    const links = c.estado === 'agendada'
+      ? `<div class="row-links"><button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}">Reprogramar</button><button type="button" class="link-btn" data-act="novino" data-id="${esc(c.id)}">No vino</button></div>` : '';
+
+    return `<li class="cita estado-${esc(c.estado)}">
+      <div class="cita-main">
+        <span class="avatar" aria-hidden="true">${esc(inicial(c.perro))}</span>
+        <div class="cita-info">
+          <p class="cita-name">${esc(c.perro)}</p>
+          <p class="cita-meta">${esc(hora12(c.hora))}${c.fecha !== today() ? ` (${esc(fmtDay(c.fecha))})` : ''} · ${esc(servicioPrincipal(c.servicios) || 'Sin servicio')}</p>
+          <div class="cita-chips">${pasos(c.estado)}${chips.join('')}</div>
+        </div>
+        <div class="cita-cta">${cta}</div>
       </div>
+      ${detalle || links ? `<details class="cita-more"><summary>Detalles</summary><ul class="det">${detalle}</ul>${links}</details>` : ''}
+      ${form}
     </li>`;
   }
 
@@ -1505,29 +1539,33 @@
     return out;
   }
 
-  // Lo que el equipo necesita saber de Amigo VIP en cada cita de hoy
-  function vipHoy(c) {
-    const f = fichaDe(c);
+  // Amigo VIP en la agenda: un chip corto y el detalle escondido
+  function vipChip(c, f) {
     if (!f || c.estado === 'cancelada') return '';
     const v = vipDe(f);
-    const items = [];
+    let sello = '', premios = premiosPendientes(f).length;
     if (c.estado === 'entregada') {
-      if (c.fecha >= VIP_LANZAMIENTO && esGroomingCompleto(c.servicios) && v.ultima_visita === c.fecha) {
-        items.push(v.ultima_sumo
-          ? `<li class="tag vip">Amigo VIP: sumó el sello ${v.sellos} de 10</li>`
-          : `<li class="tag vip-no">Amigo VIP: esta visita no sumó (más de 30 días)</li>`);
-      }
+      if (c.fecha >= VIP_LANZAMIENTO && esGroomingCompleto(c.servicios) && v.ultima_visita === c.fecha && v.ultima_sumo) sello = `Sello ${v.sellos}/10`;
     } else {
       const pv = vipPrevision(c);
-      if (pv?.suma) {
-        items.push(`<li class="tag vip">Amigo VIP: esta visita es el sello ${pv.sello} de 10</li>`);
-        if (pv.premio) items.push(`<li class="tag premio">Premio de hoy: ${esc(premioTxt(pv.premio))}</li>`);
-      } else if (pv) {
-        items.push(`<li class="tag vip-no">${esc(pv.motivo)}</li>`);
-      }
+      if (pv?.suma) { sello = `Sello ${pv.sello}/10`; if (pv.premio) premios++; }
     }
-    for (const p of premiosPendientes(f)) items.push(`<li class="tag premio">Premio por entregar: ${esc(premioTxt(p.hito))}</li>`);
-    return items.length ? `<ul class="tags">${items.join('')}</ul>` : '';
+    return (sello ? `<span class="chip-s vip">${esc(sello)}</span>` : '')
+      + (premios ? `<span class="chip-s premio">${premios > 1 ? `${premios} premios` : 'Premio'}</span>` : '');
+  }
+
+  function vipDetalle(c, f) {
+    if (!f || c.estado === 'cancelada') return [];
+    const out = [];
+    if (c.estado !== 'entregada') {
+      const pv = vipPrevision(c);
+      if (pv?.suma) out.push(`Amigo VIP: esta visita es el sello ${pv.sello} de 10${pv.premio ? `. Premio de hoy: ${premioTxt(pv.premio)}` : ''}`);
+      else if (pv) out.push(pv.motivo);
+    } else if (c.fecha >= VIP_LANZAMIENTO && esGroomingCompleto(c.servicios) && vipDe(f).ultima_visita === c.fecha && !vipDe(f).ultima_sumo) {
+      out.push('Amigo VIP: esta visita no sumó sello (más de 30 días)');
+    }
+    for (const p of premiosPendientes(f)) out.push(`Premio por entregar: ${premioTxt(p.hito)}`);
+    return out;
   }
 
   let pendLista = [];
@@ -1541,8 +1579,12 @@
     cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
     tijera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>',
     chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/></svg>',
-    regalo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>'
+    regalo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>',
+    reloj: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    listo: '<svg viewBox="0 0 34 34" fill="currentColor" aria-hidden="true"><ellipse cx="17" cy="22.5" rx="7.5" ry="6.5"/><circle cx="8" cy="14" r="3.3"/><circle cx="13.5" cy="8.5" r="3.3"/><circle cx="20.5" cy="8.5" r="3.3"/><circle cx="26" cy="14" r="3.3"/></svg>'
   };
+
+  const ICONO_MSG = { listo: 'listo', confirmacion: 'cal', dia_antes: 'reloj', toca_volver: 'chat', amigo_vip: 'regalo' };
 
   // Perros que pierden el plazo de 30 días en la próxima semana y no tienen cita
   function vipPorVencer() {
@@ -1585,10 +1627,7 @@
     // Panel Amigo VIP del tablero
     const vencen = vipPorVencer();
     $('#vipHoy').innerHTML = `
-      <p class="mini-title">Premios de hoy</p>
-      ${premios.length ? `<ul class="mini-list">${premios.map(p => `<li><span class="mini-name">${esc(p.perro)}</span><span class="mini-meta">${esc(hora12(p.hora))} · ${esc(p.txt)}${p.pendiente ? ' (pendiente)' : ''}</span></li>`).join('')}</ul>`
-        : '<p class="mini-empty">Ningún perrito de hoy gana premio.</p>'}
-      <p class="mini-title">Pierden el plazo esta semana</p>
+      <p class="mini-title">Pierden su plazo esta semana</p>
       ${vencen.length ? `<ul class="mini-list">${vencen.slice(0, 5).map(f => `<li><span class="mini-name">${esc(f.perro)}</span><span class="mini-meta">${vipDe(f).sellos} de 10 · hasta el ${esc(fmtDay(vipDe(f).vence))}</span>
           ${normWa(f.whatsapp).length === 8 ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensajeVence(f)))}" target="_blank" rel="noopener" aria-label="Escribir a ${esc(f.nombre)} por ${esc(f.perro)}">Escribir</a>` : ''}</li>`).join('')}</ul>
           ${vencen.length > 5 ? `<button type="button" class="link-btn" data-go="vip">Ver los ${vencen.length}</button>` : ''}`
@@ -1602,7 +1641,7 @@
 
     const sinCerrar = citas.filter(c => (c.estado === 'agendada' || c.estado === 'en_katana') && c.fecha < t).length;
     $('#sinCerrar').hidden = sinCerrar === 0;
-    $('#sinCerrarText').textContent = `${plural(sinCerrar, 'cita pasada sigue', 'citas pasadas siguen')} sin cerrar. Márcalas como entregadas o "No vino": las que no se cierran no suman sello Amigo VIP.`;
+    $('#sinCerrarText').textContent = `${plural(sinCerrar, 'cita pasada sin cerrar', 'citas pasadas sin cerrar')}: no suman sello hasta que las marques.`;
 
     const sinFrec = fichas.filter(f => !f.frecuencia).length;
     $('#sinFrec').hidden = sinFrec === 0;
@@ -1611,7 +1650,7 @@
     const deHoy = citas.filter(c => c.estado !== 'cancelada' && (c.fecha === t || c.estado === 'en_katana'))
       .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
     $('#hoyCitas').innerHTML = deHoy.length
-      ? `<ul class="rows">${deHoy.map(hoyRow).join('')}</ul>`
+      ? `<ul class="citas">${deHoy.map(hoyRow).join('')}</ul>`
       : `<div class="empty"><p>No hay citas para hoy.</p><button type="button" class="btn btn-primary" data-go="nueva">Registrar una cita</button></div>`;
 
     pendLista = pendientes();
@@ -1626,33 +1665,38 @@
     const visibles = pendLista.map((it, i) => [it, i]).filter(([it]) => msgFiltro === 'todos' || it.tipo === msgFiltro);
 
     $('#hoyMensajes').innerHTML = visibles.length
-      ? `<ul class="rows">${visibles.map(([it, i]) => {
+      ? `<ul class="citas">${visibles.map(([it, i]) => {
           const c = it.cita, f = it.ficha;
           const perro = it.fichas ? listaPerros(it.fichas) : it.citas ? perrosDe(it) : (c?.perro || f?.perro);
-          const cliente = c?.cliente || f?.nombre || 'Cliente sin ficha';
+          const cliente = primerNombre(c?.cliente || f?.nombre) || 'Cliente sin ficha';
           const num = c?.whatsapp || f?.whatsapp;
-          const extra = it.tipo === 'toca_volver' ? `Última visita: ${fmtDay(it.ref)}`
-            : it.tipo === 'amigo_vip' ? (it.fichas || [f]).map(x => `${x.perro}: ${vipDe(x).sellos} de 10`).join(' · ')
+          const extra = it.tipo === 'toca_volver' ? `última visita ${fmtDay(it.ref)}`
+            : it.tipo === 'amigo_vip' ? 'tarjeta y sellos'
             : `${fmtDay(c.fecha)}, ${hora12(c.hora)}`;
-          const etiqueta = it.atrasado ? 'Recordatorio atrasado · la cita es hoy' : TIPO_AVISO[it.tipo];
-          return `<li class="row msg tipo-${it.tipo}${it.atrasado ? ' atrasado' : ''}"><div>
-            <p class="msg-type">${esc(etiqueta)}</p>
-            <p class="name">${esc(perro)}</p>
-            <p class="meta">${esc(cliente)} · ${esc(fmtWa(num))} · ${esc(extra)}</p>
-            <p class="msg-text">${vistaPrevia(mensaje(it))}</p>
-            <div class="row-actions">
-              <a class="btn btn-wa btn-sm" href="${esc(waLink(num, mensaje(it)))}" target="_blank" rel="noopener" data-send="${i}">Enviar por WhatsApp</a>
-              <button type="button" class="link-btn" data-skip="${i}">No enviar</button>
-            </div></div></li>`;
+          const etiqueta = it.atrasado ? 'Recordatorio atrasado' : TIPO_AVISO[it.tipo];
+          return `<li class="cita msg2 tipo-${it.tipo}${it.atrasado ? ' atrasado' : ''}">
+            <div class="cita-main">
+              <span class="avatar msg-av" aria-hidden="true">${ICONOS[ICONO_MSG[it.tipo]] || ICONOS.chat}</span>
+              <div class="cita-info">
+                <p class="msg-type">${esc(etiqueta)}</p>
+                <p class="cita-name">${esc(perro)}</p>
+                <p class="cita-meta">${esc(cliente)} · ${esc(extra)}</p>
+              </div>
+              <div class="cita-cta msg-cta">
+                <a class="btn btn-wa btn-sm" href="${esc(waLink(num, mensaje(it)))}" target="_blank" rel="noopener" data-send="${i}" aria-label="Enviar por WhatsApp a ${esc(cliente)}: ${esc(etiqueta)} de ${esc(perro)}">Enviar</a>
+                <button type="button" class="link-btn" data-skip="${i}" aria-label="No enviar: ${esc(etiqueta)} de ${esc(perro)}">No enviar</button>
+              </div>
+            </div>
+            <details class="cita-more"><summary>Ver mensaje</summary><p class="msg-text">${vistaPrevia(mensaje(it))}</p></details>
+          </li>`;
         }).join('')}</ul>`
-      : `<div class="empty"><p>No hay mensajes pendientes. Aquí aparecen las confirmaciones, los avisos de la víspera, los perros que ya deben volver y los que están listos para recoger.</p></div>`;
+      : `<div class="empty"><p>No hay mensajes pendientes.</p></div>`;
 
     const deManana = citas.filter(c => c.fecha === manana && c.estado !== 'cancelada').sort((a, b) => a.hora.localeCompare(b.hora));
     $('#hoyManana').innerHTML = deManana.length
-      ? `<ul class="rows compact">${deManana.map(c => `<li class="row"><div class="when"><span class="h">${esc(hora12(c.hora))}</span></div>
-          <div><p class="name">${esc(c.perro)}</p><p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
-          <div class="row-links"><button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}">Reprogramar</button></div></div></li>`).join('')}</ul>`
-      : `<div class="empty"><p>No hay citas para mañana.</p></div>`;
+      ? `<ul class="mini-list">${deManana.map(c => `<li><span class="mini-name">${esc(c.perro)}</span><span class="mini-meta">${esc(hora12(c.hora))} · ${esc(servicioPrincipal(c.servicios))}</span>
+          <button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}" aria-label="Reprogramar la cita de ${esc(c.perro)}">Reprogramar</button></li>`).join('')}</ul>`
+      : `<p class="mini-empty">No hay citas para mañana.</p>`;
 
     if (abierto) $(`#nota-${CSS.escape(abierto.id)}`)?.focus();
   }
@@ -1727,9 +1771,8 @@
     const wa = normWa(f.whatsapp).length === 8;
     return `<li class="row ficha"><div>
       <div class="vip-row-head"><p class="name">${esc(f.perro)}</p><p class="vip-count">${v.sellos}<span>/10</span></p></div>
-      <p class="meta">${esc(f.nombre)} · ${esc(f.whatsapp)}</p>
       <div class="vip-mini" aria-label="${esc(`${v.sellos} de 10 sellos`)}">${sellosMini(v.sellos)}</div>
-      <p class="meta vip-meta">${esc(vipResumen(f))}</p>
+      <p class="meta">${esc(primerNombre(f.nombre))} · ${esc(vipCorto(f))}</p>
       ${pend.length ? `<ul class="tags">${pend.map(p => `<li class="tag premio">Premio por entregar: ${esc(premioTxt(p.hito))}</li>`).join('')}</ul>` : ''}
       <div class="row-links">
         ${extra}
@@ -1749,7 +1792,7 @@
     $('#vipStats').textContent = `${plural(conSellos.length, 'perro con sellos', 'perros con sellos')} · ${plural(canjes.length, 'premio entregado', 'premios entregados')}`;
     const escribir = f => normWa(f.whatsapp).length === 8 ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensajeVence(f)))}" target="_blank" rel="noopener">Recordarle que vuelva</a>` : '';
     box.innerHTML = `
-      <p class="note">Cada grooming completo entregado suma un sello si el perro vuelve en un máximo de 30 días. Premios: sello 3, regalito sorpresa; 5, 10% de descuento; 7, tratamiento hidratante; 10, experiencia spa.</p>
+      <p class="note">Sello 3: regalito · 5: 10% desc. · 7: hidratante · 10: spa</p>
       ${conPremio.length ? `<h3 class="group-title">Premios por entregar</h3><ul class="rows">${conPremio.map(f => vipFila(f)).join('')}</ul>` : ''}
       <h3 class="group-title">Pierden el plazo esta semana</h3>
       ${vencen.length ? `<ul class="rows">${vencen.map(f => vipFila(f, escribir(f))).join('')}</ul>` : '<p class="mini-empty">Nadie pierde su plazo en los próximos 7 días.</p>'}
