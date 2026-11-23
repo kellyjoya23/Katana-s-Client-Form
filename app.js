@@ -6,20 +6,55 @@
 
   // ---------- Opciones ----------
   // Servicios con los nombres que Katana's usa con sus clientes
+  // Íconos de las opciones (trazo simple)
+  const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const IC = {
+    tijera: SVG('<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/>'),
+    cepillo: SVG('<path d="M4 14h16v3a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"/><path d="M7 14V9M10.5 14V7M14 14V9M17.5 14V7"/>'),
+    peine: SVG('<rect x="3" y="5" width="18" height="5" rx="2"/><path d="M6 10v8M9 10v6M12 10v8M15 10v6M18 10v8"/>'),
+    gota: SVG('<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>'),
+    mano: SVG('<path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5V4a1.5 1.5 0 0 1 3 0v8M14 11.5V6a1.5 1.5 0 0 1 3 0v8a7 7 0 0 1-7 7h-.5A6.5 6.5 0 0 1 5 18.5L3.5 15a1.5 1.5 0 0 1 2.6-1.5L8 16"/>'),
+    diente: SVG('<path d="M7 3c-2.5 0-4 2-4 4.5 0 3 1.5 4 2 7S6 21 7.5 21s1.5-4 3-6.5c.5-.8 2.5-.8 3 0C15 17 15 21 16.5 21S18.5 17.5 19 14.5s2-4 2-7C21 5 19.5 3 17 3c-2 0-3 1-5 1S9 3 7 3z"/>'),
+    nudo: SVG('<path d="M4 12c4-6 8 6 12 0s4-4 4-4M4 16c4-6 8 6 12 0"/>'),
+    pastilla: SVG('<rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-45 12 12)"/><path d="M8.5 8.5l7 7"/>'),
+    chispa: SVG('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>'),
+    chat: SVG('<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/>'),
+    tel: SVG('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>'),
+    camara: SVG('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5v.01"/>'),
+    fb: SVG('<path d="M15 3h-2.5A3.5 3.5 0 0 0 9 6.5V10H6v4h3v7h4v-7h3l1-4h-4V7a1 1 0 0 1 1-1h2z"/>'),
+    nota: SVG('<path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M14 3c0 3 2.5 5 5 5"/>'),
+    tienda: SVG('<path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9M9 20v-6h6v6"/>'),
+    ficha: SVG('<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2M14 10h4M14 13h3"/>'),
+    nuevo: SVG('<circle cx="10" cy="8" r="4"/><path d="M3 20c.8-3.5 3.6-5 7-5s4 .5 5 1.5M19 14v6M16 17h6"/>'),
+    reloj: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+    mas: SVG('<path d="M12 5v14M5 12h14"/>')
+  };
+  // Servicios con los nombres que Katana's usa con sus clientes
   const PRINCIPALES = [
-    { v: 'Grooming completo', l: 'Grooming completo' },
-    { v: 'Grooming completo de deslanado', l: 'Grooming completo de deslanado' },
-    { v: 'Grooming completo pelo corto', l: 'Grooming completo pelo corto' },
-    { v: 'Baño completo', l: 'Baño completo' },
-    { v: 'Hand stripping', l: 'Hand stripping' }
+    { v: 'Grooming completo', l: 'Grooming completo', d: 'Corte, baño, uñas, orejas', ico: 'tijera' },
+    { v: 'Grooming completo de deslanado', l: 'Deslanado', d: 'Grooming sin corte, saca el pelo muerto', ico: 'cepillo' },
+    { v: 'Grooming completo pelo corto', l: 'Pelo corto', d: 'Grooming para perros de pelo corto', ico: 'peine' },
+    { v: 'Baño completo', l: 'Baño completo', d: 'Baño y corte de uñas', ico: 'gota' },
+    { v: 'Hand stripping', l: 'Hand stripping', d: 'Arrancado a mano', ico: 'mano' }
   ];
-  const ADICIONALES = ['Limpieza de dientes', 'Tratamiento de nudos', 'Baño medicado', 'Ozonoterapia'];
-  const CANALES = ['WhatsApp', 'Llamada', 'Instagram', 'Facebook', 'TikTok', 'En el local'];
+  const ADICIONALES = [
+    { v: 'Limpieza de dientes', l: 'Dientes', ico: 'diente' },
+    { v: 'Tratamiento de nudos', l: 'Nudos', ico: 'nudo' },
+    { v: 'Baño medicado', l: 'Baño medicado', ico: 'pastilla' },
+    { v: 'Ozonoterapia', l: 'Ozonoterapia', ico: 'chispa' }
+  ];
+  const CANALES = [
+    { v: 'WhatsApp', l: 'WhatsApp', ico: 'chat' }, { v: 'Llamada', l: 'Llamada', ico: 'tel' },
+    { v: 'Instagram', l: 'Instagram', ico: 'camara' }, { v: 'Facebook', l: 'Facebook', ico: 'fb' },
+    { v: 'TikTok', l: 'TikTok', ico: 'nota' }, { v: 'En el local', l: 'En el local', ico: 'tienda' }
+  ];
   const TIPOS = [
-    { v: 'ficha', l: 'Sí, ya tiene ficha' },
-    { v: 'nuevo', l: 'No, es cliente nuevo' },
-    { v: 'antes', l: 'Cliente de antes, sin ficha' }
+    { v: 'ficha', l: 'Ya tiene ficha', d: 'Lo buscamos por WhatsApp', ico: 'ficha' },
+    { v: 'nuevo', l: 'Cliente nuevo', d: 'Primera vez en Katana\'s', ico: 'nuevo' },
+    { v: 'antes', l: 'Cliente de antes', d: 'Ya venía, pero sin ficha', ico: 'reloj' }
   ];
+  // Horarios que más se agendan (también se puede escribir otra hora)
+  const HORARIOS = ['08:00', '09:00', '10:00', '11:00', '12:00', '12:30', '13:00', '14:00', '15:00', '16:00'];
   const TIPO_LABEL = { ficha: 'Con ficha', nuevo: 'Cliente nuevo', antes: 'Cliente de antes' };
   const ESTADO_LABEL = { agendada: 'Agendada', en_katana: "En Katana's", entregada: 'Entregada', cancelada: 'Cancelada' };
   const TRANQUILO = 'Es tranquilo';
@@ -39,16 +74,19 @@
   // ---------- Pasos ----------
   const STEPS = {
     cita: {
-      title: 'La cita',
+      title: '¿Quién viene y qué se hará?',
       fields: [
-        { name: 'fecha', label: 'Fecha de la cita', type: 'date', req: true },
-        { name: 'hora', label: 'Hora', type: 'time', req: true },
-        { name: 'principal', label: 'Servicio', type: 'radio', options: PRINCIPALES, other: true, stack: true, req: true,
-          hint: 'Grooming completo: corte, baño, corte de uñas, limpieza de orejas y depilación. Deslanado y pelo corto: para perros que no necesitan corte. Baño completo: incluye corte de uñas.' },
-        { name: 'adicionales', label: 'Adicionales', type: 'check', options: ADICIONALES, other: true },
-        { name: 'canal', label: '¿Por dónde agendó?', type: 'radio', options: CANALES, other: true, req: true },
-        { name: 'tipo', label: "¿El perro ya tiene ficha en Katana's?", type: 'radio', options: TIPOS, stack: true, req: true,
-          hint: 'Elige "Cliente de antes, sin ficha" para quienes ya venían antes de este registro.' }
+        { name: 'tipo', label: '¿El perro ya tiene ficha?', type: 'radio', options: TIPOS, cards: true, req: true },
+        { name: 'principal', label: 'Servicio', type: 'radio', options: PRINCIPALES, other: true, cards: true, req: true },
+        { name: 'adicionales', label: 'Adicionales', type: 'check', options: ADICIONALES, other: true, icons: true }
+      ]
+    },
+    cuando: {
+      title: '¿Cuándo?',
+      fields: [
+        { name: 'fecha', label: 'Día', type: 'date', ui: 'dias', req: true },
+        { name: 'hora', label: 'Hora', type: 'time', ui: 'horas', req: true },
+        { name: 'canal', label: '¿Por dónde agendó?', type: 'radio', options: CANALES, other: true, icons: true, req: true }
       ],
       after: '<div id="conflicto" class="warn" role="alert" hidden></div>'
     },
@@ -132,7 +170,7 @@
 
   // Campos que se pueden editar en una ficha (todo menos el permiso de uso de datos)
   const EDIT_FICHA = [...STEPS.cliente.fields, ...STEPS.perro.fields, ...STEPS.salud.fields, ...PERMISOS];
-  const EDIT_CITA = STEPS.cita.fields.filter(f => ['fecha', 'hora', 'principal', 'adicionales'].includes(f.name));
+  const EDIT_CITA = [...STEPS.cuando.fields, ...STEPS.cita.fields].filter(f => ['fecha', 'hora', 'principal', 'adicionales'].includes(f.name));
   const servicioPrincipal = serv => asList(serv).find(x => PRINCIPALES.some(p => p.v === x)) || asList(serv)[0] || '';
   const serviciosAdicionales = serv => { const p = servicioPrincipal(serv); return asList(serv).filter(x => x !== p); };
 
@@ -366,6 +404,17 @@
     const err = `<p class="err" id="${px}e-${f.name}" hidden></p>`;
     const desc = `aria-describedby="${f.hint ? `${px}h-${f.name} ` : ''}${px}e-${f.name}"`;
 
+    // Día en botones (próximas 2 semanas) u hora en cuadrícula, con campo para escribir otra
+    if (f.ui === 'dias' || f.ui === 'horas') {
+      const dias = f.ui === 'dias';
+      return `<fieldset class="field" data-field="${f.name}" ${desc}>
+        <legend>${f.label}</legend>
+        <div class="${dias ? 'dias' : 'horas'}" data-${dias ? 'dias' : 'horas'}></div>
+        <div class="otra">
+          <label for="${id}">${dias ? 'Otra fecha' : 'Otra hora'}</label>
+          <input id="${id}" name="${f.name}" type="${f.type}">
+        </div>${err}</fieldset>`;
+    }
     if (['text', 'tel', 'email', 'date', 'time'].includes(f.type)) {
       const extra = f.type === 'tel' ? 'inputmode="tel" autocomplete="off" placeholder="7123-4567"'
         : f.type === 'email' ? 'autocomplete="off" placeholder="nombre@gmail.com"'
@@ -386,10 +435,21 @@
         <label class="consent"><input type="checkbox" name="${f.name}" value="Sí"><span>${f.text}</span></label>${err}</fieldset>`;
     }
     const t = f.type === 'radio' ? 'radio' : 'checkbox';
+    if (f.cards) {
+      const card = o => `<label class="opt-card"><input type="${t}" name="${f.name}" value="${esc(o.v)}">
+        <span class="oc-ico">${IC[o.ico] || IC.mas}</span><span class="oc-txt"><span class="oc-l">${esc(o.l)}</span>${o.d ? `<span class="oc-d">${esc(o.d)}</span>` : ''}</span>
+        <span class="oc-check" aria-hidden="true"></span></label>`;
+      const otroCard = f.other ? card({ v: '__otro', l: 'Otro', d: 'Escribe cuál', ico: 'mas' }) : '';
+      const otroInput = f.other ? `<input class="other" type="text" name="${f.name}__otro" placeholder="¿Cuál?" aria-label="${f.label}: otro" autocomplete="off" hidden>` : '';
+      return `<fieldset class="field" data-field="${f.name}" ${desc}>
+        <legend>${f.label}${opt}</legend>${hint}
+        <div class="cards">${f.options.map(normOpt).map(card).join('')}${otroCard}</div>${otroInput}${err}</fieldset>`;
+    }
+    const icono = o => f.icons ? `<span class="chip-ico">${IC[o.ico] || IC.mas}</span>` : '';
     const chips = f.options.map(normOpt).map(o =>
-      `<label class="chip"><input type="${t}" name="${f.name}" value="${esc(o.v)}"><span>${esc(o.l)}</span></label>`).join('');
+      `<label class="chip${f.icons ? ' chip-i' : ''}"><input type="${t}" name="${f.name}" value="${esc(o.v)}"><span>${icono(o)}${esc(o.l)}</span></label>`).join('');
     const other = f.other
-      ? `<label class="chip"><input type="${t}" name="${f.name}" value="__otro"><span>Otro</span></label>` : '';
+      ? `<label class="chip${f.icons ? ' chip-i' : ''}"><input type="${t}" name="${f.name}" value="__otro"><span>${f.icons ? `<span class="chip-ico">${IC.mas}</span>` : ''}Otro</span></label>` : '';
     const otherInput = f.other
       ? `<input class="other" type="text" name="${f.name}__otro" placeholder="¿Cuál?" aria-label="${f.label}: otro" autocomplete="off" hidden>` : '';
     return `<fieldset class="field" data-field="${f.name}" ${desc}>
@@ -398,6 +458,53 @@
   }
 
   const allFields = id => [...STEPS[id].fields, ...(STEPS[id].tail || [])];
+
+  // Botones de día y hora: muestran cuántas citas hay para no chocar
+  const citasEn = (fecha, hora) => citas.filter(c => c.estado !== 'cancelada' && c.fecha === fecha && (!hora || c.hora === hora)).length;
+
+  function pintarDias(root = form) {
+    const box = root.querySelector('[data-dias]');
+    if (!box) return;
+    const elegido = getVal('fecha', root);
+    const t = today();
+    box.innerHTML = Array.from({ length: 14 }, (_, i) => {
+      const iso = addDays(t, i);
+      const d = new Date(iso + 'T12:00');
+      const sem = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : cap(d.toLocaleDateString('es-SV', { weekday: 'short' }).replace('.', ''));
+      const n = citasEn(iso);
+      const mes = d.toLocaleDateString('es-SV', { month: 'short' }).replace('.', '');
+      return `<button type="button" class="dia" data-dia="${iso}" aria-pressed="${iso === elegido}" aria-label="${esc(fmtLong(iso))}${n ? `, ${plural(n, 'cita', 'citas')}` : ''}">
+        <span class="dia-sem">${esc(sem)}</span><span class="dia-num">${d.getDate()}</span><span class="dia-mes">${esc(mes)}</span>
+        <span class="dia-n" aria-hidden="true">${n ? '•'.repeat(Math.min(n, 4)) : ''}</span></button>`;
+    }).join('');
+  }
+
+  function pintarHoras(root = form) {
+    const box = root.querySelector('[data-horas]');
+    if (!box) return;
+    const fecha = getVal('fecha', root);
+    const elegida = hhmm(getVal('hora', root));
+    const ahora = ahoraHHMM();
+    box.innerHTML = HORARIOS.map(h => {
+      const n = fecha ? citasEn(fecha, h) : 0;
+      const paso = fecha === today() && h < ahora;
+      return `<button type="button" class="hora${n ? ' ocupada' : ''}${paso ? ' pasada' : ''}" data-hora="${h}" aria-pressed="${h === elegida}" aria-label="${esc(hora12(h))}${n ? `, ya hay ${plural(n, 'cita', 'citas')}` : ''}">
+        <span>${esc(hora12(h))}</span>${n ? `<span class="hora-n">${plural(n, 'cita', 'citas')}</span>` : ''}</button>`;
+    }).join('');
+  }
+
+  // Tocar un día o una hora llena el campo de verdad (el que se guarda)
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-dia], [data-hora]');
+    if (!b) return;
+    const root = b.closest('form');
+    const name = b.dataset.dia ? 'fecha' : 'hora';
+    const input = root.querySelector(`[name="${name}"]`);
+    input.value = b.dataset.dia || b.dataset.hora;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    pintarDias(root); pintarHoras(root);
+    root.querySelector(`[data-${name === 'fecha' ? 'dia' : 'hora'}="${input.value}"]`)?.focus();
+  });
 
   function renderSteps() {
     $('#steps').innerHTML = Object.entries(STEPS).map(([id, s]) => `
@@ -537,9 +644,9 @@
 
   function path() {
     const t = getVal('tipo');
-    if (t === 'ficha') return ['cita', 'buscar'];
-    if (t === 'antes') return ['cita', 'antes', ...FICHA_STEPS];
-    return ['cita', 'nuevo', ...FICHA_STEPS];
+    if (t === 'ficha') return ['cita', 'cuando', 'buscar'];
+    if (t === 'antes') return ['cita', 'cuando', 'antes', ...FICHA_STEPS];
+    return ['cita', 'cuando', 'nuevo', ...FICHA_STEPS];
   }
 
   function show(focus = false) {
@@ -548,12 +655,13 @@
     const id = p[idx];
     $$('.step', form).forEach(s => { s.hidden = s.dataset.step !== id; });
     $('#dots').innerHTML = p.map((_, i) => `<li class="${i < idx ? 'done' : i === idx ? 'now' : ''}"></li>`).join('');
-    $('#stepLabel').textContent = `Paso ${idx + 1} de ${p.length} · ${STEPS[id].title}`;
+    $('#stepLabel').textContent = `Paso ${idx + 1} de ${p.length}`;
     $('#back').hidden = idx === 0;
     const last = idx === p.length - 1 && !!getVal('tipo');
     $('#next').textContent = last ? 'Guardar cita' : 'Siguiente';
     $('#saveErr').hidden = true;
     if (id === 'buscar') updateMatch();
+    if (id === 'cuando') { pintarDias(); pintarHoras(); }
     if (focus) {
       form.scrollIntoView({ block: 'start', behavior: 'auto' });
       $(`.step[data-step="${id}"] h2`).focus({ preventScroll: true });
@@ -566,7 +674,7 @@
     if (saving) return;
     const p = path();
     if (!validateFields(allFields(p[idx]))) return;
-    if (p[idx] === 'cita' && avisarConflicto($('#conflicto'), getVal('fecha'), getVal('hora'))) return;
+    if (p[idx] === 'cuando' && avisarConflicto($('#conflicto'), getVal('fecha'), getVal('hora'))) return;
     if (idx < p.length - 1) { idx++; show(true); return; }
 
     saving = true;
@@ -595,7 +703,7 @@
 
   bindFieldEvents(form, '', t => {
     if (t.name === 'tipo') show();
-    if (t.name === 'fecha' || t.name === 'hora') { conflictoVisto = ''; $('#conflicto').hidden = true; }
+    if (t.name === 'fecha' || t.name === 'hora') { conflictoVisto = ''; $('#conflicto').hidden = true; pintarDias(); pintarHoras(); }
     if (t.name === 'wa_b' || t.name === 'perro_b') updateMatch();
   });
 
@@ -804,7 +912,7 @@
   document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) switchTab(b.dataset.go); });
 
   // ---------- Registros ----------
-  let listMode = 'citas';
+  let listMode = 'fichas';
   let soloSinFrecuencia = false;
 
   function elegirLista(b) {
@@ -838,9 +946,10 @@
   $('#refresh').addEventListener('click', refresh);
 
   function renderRegistros() {
-    $('#regStats').textContent = `${plural(citas.length, 'cita', 'citas')} · ${plural(fichas.length, 'ficha', 'fichas')}`;
+    $('#regStats').textContent = `${plural(fichas.length, 'perrito', 'perritos')} · ${plural(citas.length, 'cita', 'citas')}`;
     renderMigrate();
     renderList();
+    if ($('#perfil').open) renderPerfil();
   }
 
   function coincide(q, ...campos) {
@@ -868,19 +977,45 @@
     return b.length ? `<div class="row-links">${b.join('')}</div>` : '';
   }
 
+  // Color del cuadro con la inicial: siempre el mismo para cada perrito
+  const TONOS = ['t-lila', 't-amarillo', 't-naranja', 't-fondo'];
+  const tono = f => TONOS[[...String(f?.id || f?.perro || '')].reduce((n, ch) => n + ch.charCodeAt(0), 0) % TONOS.length];
+  const ICO_ALERTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>';
+  const ICO_FLECHA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+
   function citaRow(c) {
     const f = fichaDe(c);
-    const alerts = alertsFor(f).filter(a => !a.startsWith('Alergias'));
-    const estado = c.estado && c.estado !== 'agendada' ? `<li class="tag estado">${esc(ESTADO_LABEL[c.estado] || c.estado)}</li>` : '';
-    return `<li class="row reg-row${c.estado === 'cancelada' ? ' cancelada' : ''}">
-      <div class="when"><span class="h">${esc(hora12(c.hora))}</span></div>
-      <div>
-        <p class="name">${esc(c.perro)}</p>
-        <p class="meta">${esc(c.cliente || 'Cliente sin ficha')} · ${esc(asList(c.servicios).join(', '))}</p>
-        <ul class="tags"><li class="tag">${esc(TIPO_LABEL[c.tipo] || c.tipo)}</li>${estado}${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>
-        ${accionesCita(c)}
-      </div>
-    </li>`;
+    const est = c.estado === 'agendada' ? '' : `<span class="chip-s estado-${esc(c.estado)}">${esc(ESTADO_LABEL[c.estado] || c.estado)}</span>`;
+    const cuerpo = `<span class="avatar ${tono(f || c)}" aria-hidden="true">${esc(inicial(c.perro))}</span>
+      <span class="cita-info">
+        <span class="cita-name">${esc(c.perro)}</span>
+        <span class="cita-meta">${esc(hora12(c.hora))} · ${esc(servicioPrincipal(c.servicios))}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span>
+      </span>
+      ${est}`;
+    if (f) {
+      return `<li><button type="button" class="fila${c.estado === 'cancelada' ? ' cancelada' : ''}" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(c.perro)}, cita ${esc(fmtDay(c.fecha))} ${esc(hora12(c.hora))}">${cuerpo}<span class="fila-ir">${ICO_FLECHA}</span></button></li>`;
+    }
+    return `<li><div class="fila sin-ficha${c.estado === 'cancelada' ? ' cancelada' : ''}">${cuerpo}</div>${accionesCita(c)}</li>`;
+  }
+
+  function perroCard(f) {
+    const v = vipDe(f);
+    const alerts = alertsFor(f);
+    const t = today();
+    const prox = citas.filter(c => c.ficha_id === f.id && c.estado === 'agendada' && c.fecha >= t).sort((a, b) => `${a.fecha}${a.hora}`.localeCompare(`${b.fecha}${b.hora}`))[0];
+    const ult = citas.filter(c => c.ficha_id === f.id && c.estado === 'entregada').map(c => c.fecha).sort().pop();
+    const linea = prox ? `Próxima: ${diaRelativo(prox.fecha) === 'Hoy' || diaRelativo(prox.fecha) === 'Mañana' ? diaRelativo(prox.fecha).toLowerCase() : fmtDay(prox.fecha)}, ${hora12(prox.hora)}`
+      : ult ? `Última visita: ${fmtDay(ult)}` : 'Sin visitas todavía';
+    return `<li><button type="button" class="perro-card" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(f.perro)}">
+      <span class="avatar avatar-lg ${tono(f)}" aria-hidden="true">${esc(inicial(f.perro))}</span>
+      <span class="perro-info">
+        <span class="perro-name">${esc(f.perro)}${alerts.length ? `<span class="alerta-ico" title="${esc(alerts.join(' · '))}">${ICO_ALERTA}</span>` : ''}</span>
+        <span class="perro-meta">${esc(f.raza || 'Sin raza')} · ${esc(primerNombre(f.nombre))}</span>
+        <span class="perro-meta">${esc(linea)}</span>
+        ${v.sellos_total ? `<span class="vip-mini sm">${sellosMini(v.sellos)}</span>` : ''}
+      </span>
+      ${premiosPendientes(f).length ? '<span class="chip-s premio perro-premio">Premio</span>' : ''}
+    </button></li>`;
   }
 
   function renderList() {
@@ -889,8 +1024,7 @@
     $('#filtro').hidden = !(soloSinFrecuencia && listMode === 'fichas');
     if (listMode === 'citas') {
       if (!citas.length) {
-        box.innerHTML = `<div class="empty"><p>Todavía no hay citas registradas.</p><button type="button" class="btn btn-primary" id="goNueva">Registrar una cita</button></div>`;
-        $('#goNueva').addEventListener('click', () => switchTab('nueva'));
+        box.innerHTML = `<div class="empty"><p>Todavía no hay citas registradas.</p><button type="button" class="btn btn-primary" data-go="nueva">Registrar una cita</button></div>`;
         return;
       }
       const t = today();
@@ -898,44 +1032,139 @@
       const lista = citas.filter(c => coincide(q, c.perro, c.cliente, c.whatsapp));
       if (!lista.length) { box.innerHTML = `<div class="empty"><p>Ninguna cita coincide con "${esc($('#buscar').value)}".</p></div>`; return; }
       const prox = lista.filter(c => c.fecha >= t).sort((a, b) => key(a).localeCompare(key(b)));
-      const pas = lista.filter(c => c.fecha < t).sort((a, b) => key(b).localeCompare(key(a)));
+      const sinCerrar = lista.filter(c => c.fecha < t && (c.estado === 'agendada' || c.estado === 'en_katana')).sort((a, b) => key(b).localeCompare(key(a)));
+      const pas = lista.filter(c => c.fecha < t && !sinCerrar.includes(c)).sort((a, b) => key(b).localeCompare(key(a)));
       const dias = [...new Set(prox.map(c => c.fecha))];
+      const pasRow = c => citaRow(c).replace(`${esc(hora12(c.hora))} · `, `${esc(fmtDay(c.fecha))} · `);
       box.innerHTML =
+        (sinCerrar.length ? `<h3 class="group-title alerta-title">Sin cerrar · no suman sello hasta marcarlas</h3><ul class="filas">${sinCerrar.map(c => `<li class="sin-cerrar">${pasRow(c).replace(/^<li>|<\/li>$/g, '')}${fichaDe(c) ? accionesCita(c) : ''}</li>`).join('')}</ul>` : '') +
         dias.map(d => `<h3 class="group-title">${esc(diaRelativo(d))}${d > addDays(t, 1) ? '' : ` · <span class="sub-date">${esc(fmtDay(d))}</span>`}</h3>
-          <ul class="rows">${prox.filter(c => c.fecha === d).map(citaRow).join('')}</ul>`).join('') +
-        (pas.length ? `<h3 class="group-title">Pasadas</h3><ul class="rows">${pas.map(c => citaRow(c).replace('<span class="h">', `<span class="d">${esc(fmtDay(c.fecha))}</span><span class="h">`)).join('')}</ul>` : '');
+          <ul class="filas">${prox.filter(c => c.fecha === d).map(citaRow).join('')}</ul>`).join('') +
+        (pas.length ? `<h3 class="group-title">Pasadas</h3><ul class="filas">${pas.slice(0, 60).map(pasRow).join('')}</ul>` : '');
       return;
     }
     if (!fichas.length) {
-      box.innerHTML = `<div class="empty"><p>Las fichas se crean al registrar una cita de un cliente nuevo o de antes.</p></div>`;
+      box.innerHTML = `<div class="empty"><p>Los perritos aparecen aquí al registrar su primera cita.</p><button type="button" class="btn btn-primary" data-go="nueva">Registrar una cita</button></div>`;
       return;
     }
     const sorted = [...fichas]
       .filter(f => !soloSinFrecuencia || !f.frecuencia)
-      .filter(f => coincide(q, f.perro, f.nombre, f.whatsapp))
+      .filter(f => coincide(q, f.perro, f.nombre, f.whatsapp, f.raza))
       .sort((a, b) => norm(a.perro).localeCompare(norm(b.perro)));
-    if (!sorted.length) { box.innerHTML = `<div class="empty"><p>Ninguna ficha coincide${q ? ` con "${esc($('#buscar').value)}"` : ''}.</p></div>`; return; }
-    box.innerHTML = `<ul class="rows">${sorted.map(f => {
-      const visitas = citas.filter(c => c.ficha_id === f.id && c.estado !== 'cancelada');
-      const ultima = visitas.map(c => c.fecha).filter(d => d <= today()).sort().pop();
-      const alerts = alertsFor(f);
-      const pend = premiosPendientes(f);
-      const v = vipDe(f);
-      return `<li class="row ficha"><div>
-        <p class="name">${esc(f.perro)}</p>
-        <p class="meta">${esc([f.raza, f.tamano].filter(Boolean).join(' · '))}</p>
-        <p class="meta">${esc(f.nombre)} · ${esc(f.whatsapp)}</p>
-        <p class="meta">${plural(visitas.length, 'cita', 'citas')}${ultima ? ` · última: ${esc(fmtDay(ultima))}` : ''} · ${f.frecuencia ? esc(f.frecuencia.toLowerCase()) : '<strong>sin frecuencia</strong>'}</p>
-        <div class="vip-mini" aria-label="${esc(`${v.sellos} de 10 sellos`)}">${sellosMini(v.sellos)}</div>
-        <p class="meta vip-meta">${esc(vipResumen(f))}</p>
-        ${alerts.length || pend.length ? `<ul class="tags">${pend.map(p => `<li class="tag premio">Premio por entregar: ${esc(premioTxt(p.hito))}</li>`).join('')}${alerts.map(a => `<li class="tag alert">${esc(a)}</li>`).join('')}</ul>` : ''}
-        <div class="row-links">
-          <button type="button" class="link-btn" data-ficha="${esc(f.id)}">Editar ficha</button>
-          ${normWa(f.whatsapp).length === 8 ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensaje({ tipo: 'amigo_vip', ficha: f })))}" target="_blank" rel="noopener" data-tarjeta="${esc(f.id)}">Enviar tarjeta</a>` : ''}
-          ${pend.map(p => `<button type="button" class="link-btn" data-premio="${esc(f.id)}" data-ronda="${p.ronda}" data-hito="${p.hito}">Marcar premio entregado (sello ${p.hito})</button>`).join('')}
-        </div>
-      </div></li>`;
-    }).join('')}</ul>`;
+    if (!sorted.length) { box.innerHTML = `<div class="empty"><p>Ningún perrito coincide${q ? ` con "${esc($('#buscar').value)}"` : ''}.</p></div>`; return; }
+    box.innerHTML = `<ul class="perros">${sorted.map(perroCard).join('')}</ul>`;
+  }
+
+  // ---------- Perfil de cada perrito ----------
+  let perfilId = null;
+  const perfil = $('#perfil');
+
+  function abrirPerfil(id) {
+    perfilId = id;
+    renderPerfil();
+    if (!perfil.open) perfil.showModal();
+    perfil.querySelector('.perfil-close')?.focus();
+  }
+
+  const dato = (k, v) => v ? `<div class="dato"><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>` : '';
+  const ICO = {
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M12 11v6M9 14h6"/></svg>',
+    wa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/></svg>',
+    vip: '<svg viewBox="0 0 34 34" fill="currentColor" aria-hidden="true"><ellipse cx="17" cy="22.5" rx="7.5" ry="6.5"/><circle cx="8" cy="14" r="3.3"/><circle cx="13.5" cy="8.5" r="3.3"/><circle cx="20.5" cy="8.5" r="3.3"/><circle cx="26" cy="14" r="3.3"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>',
+    x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+  };
+
+  function renderPerfil() {
+    const f = fichas.find(x => x.id === perfilId);
+    const body = $('#perfilBody');
+    if (!f) { body.innerHTML = ''; if (perfil.open) perfil.close(); return; }
+    const t = today();
+    const v = vipDe(f);
+    const alerts = alertsFor(f);
+    const suyas = citas.filter(c => c.ficha_id === f.id).sort((a, b) => `${b.fecha}${b.hora}`.localeCompare(`${a.fecha}${a.hora}`));
+    const futuras = suyas.filter(c => c.fecha >= t && c.estado !== 'cancelada' && c.estado !== 'entregada').reverse();
+    const pasadas = suyas.filter(c => !futuras.includes(c));
+    const pend = premiosPendientes(f);
+    const wa = normWa(f.whatsapp).length === 8;
+    const citaItem = c => `<li class="hist">
+        <span class="hist-fecha"><span class="hist-dia">${esc(new Date(c.fecha + 'T12:00').getDate())}</span><span class="hist-mes">${esc(new Date(c.fecha + 'T12:00').toLocaleDateString('es-SV', { month: 'short' }).replace('.', ''))}</span></span>
+        <span class="hist-info"><span class="hist-serv">${esc(asList(c.servicios).join(', ') || 'Sin servicio')}</span>
+          <span class="hist-meta">${esc(hora12(c.hora))} · ${esc(ESTADO_LABEL[c.estado] || c.estado)}${c.nota_salida ? ` · ${esc(c.nota_salida)}` : ''}</span>
+          ${accionesCita(c)}</span>
+      </li>`;
+
+    body.innerHTML = `
+      <div class="perfil-top">
+        <button type="button" class="perfil-close" data-p="cerrar" aria-label="Cerrar perfil">${ICO.x}</button>
+        <span class="avatar avatar-xl ${tono(f)}" aria-hidden="true">${esc(inicial(f.perro))}</span>
+        <h2 id="perfilNombre" class="perfil-nombre">${esc(f.perro)}</h2>
+        <p class="perfil-sub">${esc([f.raza, f.tamano, f.sexo].filter(Boolean).join(' · ') || 'Sin datos del perro')}</p>
+        ${alerts.length ? `<ul class="perfil-alertas">${alerts.map(a => `<li>${ICO_ALERTA}${esc(a)}</li>`).join('')}</ul>` : ''}
+      </div>
+
+      <div class="acciones-ico">
+        <button type="button" data-p="nueva">${ICO.cal}<span>Nueva cita</span></button>
+        ${wa ? `<a href="${esc(`https://wa.me/503${normWa(f.whatsapp)}`)}" target="_blank" rel="noopener">${ICO.wa}<span>WhatsApp</span></a>` : ''}
+        ${wa ? `<a href="${esc(waLink(f.whatsapp, mensaje({ tipo: 'amigo_vip', ficha: f })))}" target="_blank" rel="noopener" data-tarjeta="${esc(f.id)}">${ICO.vip}<span>Tarjeta VIP</span></a>` : ''}
+        <button type="button" data-p="editar">${ICO.edit}<span>Editar</span></button>
+      </div>
+
+      <section class="perfil-card vip-card" aria-label="Amigo VIP">
+        <div class="vip-card-head"><h3>Amigo VIP</h3><p class="vip-count">${v.sellos}<span>/10</span></p></div>
+        <div class="vip-mini lg">${sellosMini(v.sellos)}</div>
+        <p class="vip-card-txt">${esc(vipCorto(f) === 'sin sellos' ? 'Su tarjeta empieza con su próximo grooming completo.' : cap(vipCorto(f)) + '.')}</p>
+        ${pend.map(p => `<div class="premio-pend"><span>${esc(premioTxt(p.hito))}</span><button type="button" class="btn btn-sm btn-primary" data-premio="${esc(f.id)}" data-ronda="${p.ronda}" data-hito="${p.hito}">Marcar entregado</button></div>`).join('')}
+      </section>
+
+      ${futuras.length ? `<section class="perfil-sec"><h3>Próximas citas</h3><ul class="hist-list">${futuras.map(citaItem).join('')}</ul></section>` : ''}
+
+      <section class="perfil-sec"><h3>Dueño</h3>
+        <dl class="datos">
+          ${dato('Nombre', f.nombre)}${dato('WhatsApp', f.whatsapp)}${dato('Colonia', f.colonia)}${dato('Prefiere', f.contacto)}
+          ${dato('Viene', f.frecuencia)}${dato('Fotos en redes', siNo(f.fotos))}${dato('Recordatorios', siNo(f.recordatorios))}
+        </dl>
+      </section>
+
+      <section class="perfil-sec"><h3>Salud y carácter</h3>
+        <dl class="datos">
+          ${dato('Vacunas al día', f.vacunas)}${dato('Castrado', f.esterilizado)}${dato('Pelo', f.pelo)}${dato('Cumpleaños', f.cumple ? new Date(f.cumple + 'T12:00').toLocaleDateString('es-SV', { day: 'numeric', month: 'long', year: 'numeric' }) : '')}
+          ${dato('Alergias', f.alergias)}${dato('Carácter', asList(f.caracter).join(', '))}${dato('Notas', f.notas)}
+        </dl>
+        ${f.novedades ? `<p class="novedades">${esc(f.novedades)}</p>` : ''}
+      </section>
+
+      <section class="perfil-sec"><h3>Historial</h3>
+        ${pasadas.length ? `<ul class="hist-list">${pasadas.map(citaItem).join('')}</ul>` : '<p class="mini-empty">Todavía no tiene visitas.</p>'}
+      </section>`;
+  }
+
+  perfil.addEventListener('click', e => {
+    if (e.target === perfil) { perfil.close(); return; }   // toque fuera de la ventana
+    const p = e.target.closest('[data-p]');
+    const f = fichas.find(x => x.id === perfilId);
+    if (p && p.dataset.p === 'cerrar') { perfil.close(); return; }
+    if (p && p.dataset.p === 'editar') { abrirEditarFicha(f); return; }
+    if (p && p.dataset.p === 'nueva') { perfil.close(); nuevaCitaPara(f); return; }
+    const b = e.target.closest('[data-cita]');
+    if (b) { accionCita(b.dataset.cita, b.dataset.id); return; }
+    const pr = e.target.closest('[data-premio]');
+    if (pr) { accionPremio(pr); return; }
+    const tj = e.target.closest('[data-tarjeta]');
+    if (tj) tarjetaEnviada(tj.dataset.tarjeta);
+  });
+  perfil.addEventListener('close', () => { perfilId = null; });
+
+  // Nueva cita ya con el perro elegido (cliente con ficha)
+  function nuevaCitaPara(f) {
+    if (!f) return;
+    switchTab('nueva');
+    resetForm();
+    setVal('tipo', 'ficha', form);
+    setVal('wa_b', f.whatsapp, form);
+    $('#f-perro_b').value = f.perro;
+    show();
+    toast(`Cita para ${f.perro}: elige día, hora y servicio`);
   }
 
   // Acciones sobre citas (en Registros y en Hoy)
@@ -1006,8 +1235,8 @@
     if (pr) { accionPremio(pr); return; }
     const tj = e.target.closest('[data-tarjeta]');
     if (tj) { tarjetaEnviada(tj.dataset.tarjeta); return; }
-    const f = e.target.closest('[data-ficha]');
-    if (f) abrirEditarFicha(fichas.find(x => x.id === f.dataset.ficha));
+    const pf = e.target.closest('[data-perfil]');
+    if (pf) abrirPerfil(pf.dataset.perfil);
   });
 
   // ---------- Ventana para reprogramar citas y editar fichas ----------
@@ -1021,6 +1250,7 @@
     $('#sheetBody').innerHTML = campos.map(f => fieldHTML(f, 'x')).join('')
       + (modo.tipo === 'cita' ? '<div id="xconflicto" class="warn" role="alert" hidden></div>' : '');
     for (const f of campos) setVal(f.name, valores[f.name], sheetForm);
+    pintarDias(sheetForm); pintarHoras(sheetForm);
     $('#sheetErr').hidden = true;
     conflictoVisto = '';
     const sinCitas = modo.tipo === 'ficha' && !citas.some(c => c.ficha_id === modo.obj.id);
@@ -1032,7 +1262,7 @@
   }
 
   bindFieldEvents(sheetForm, 'x', t => {
-    if (t.name === 'fecha' || t.name === 'hora') { conflictoVisto = ''; const b = $('#xconflicto'); if (b) b.hidden = true; }
+    if (t.name === 'fecha' || t.name === 'hora') { conflictoVisto = ''; const b = $('#xconflicto'); if (b) b.hidden = true; pintarDias(sheetForm); pintarHoras(sheetForm); }
   });
   $('#sheetClose').addEventListener('click', () => sheet.close());
   $('#sheetCancel').addEventListener('click', () => sheet.close());
@@ -1497,34 +1727,22 @@
       cta = `<span class="listo-ico" title="Entregado"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span class="sr-only">Entregado</span></span>`;
     }
 
-    // Chips: solo lo indispensable a la vista
-    const chips = [];
+    // Solo lo indispensable: Amigo VIP y cuidados como íconos pequeños
+    const marcas = [];
     const vc = vipChip(c, f);
-    if (vc) chips.push(vc);
-    if (alerts.length) chips.push(`<span class="chip-s alerta">${esc(alerts[0])}${alerts.length > 1 ? ` +${alerts.length - 1}` : ''}</span>`);
+    if (vc) marcas.push(vc);
+    if (alerts.length) marcas.push(`<span class="chip-s alerta" title="${esc(alerts.join(' · '))}">${ICO_ALERTA}<span class="sr-only">Cuidado: </span>${esc(alerts[0])}${alerts.length > 1 ? ` +${alerts.length - 1}` : ''}</span>`);
 
-    // Detalles escondidos
-    const detalle = [
-      ...alerts.map(a => `<li>${esc(a)}</li>`),
-      ...vipDetalle(c, f).map(t => `<li>${esc(t)}</li>`),
-      c.cliente ? `<li>Cliente: ${esc(c.cliente)} · ${esc(fmtWa(c.whatsapp))}</li>` : '',
-      c.llegada ? `<li>Llegó a las ${esc(horaDe(c.llegada))}${c.nota_llegada ? ': ' + esc(c.nota_llegada) : ''}</li>` : '',
-      c.salida ? `<li>Entregado a las ${esc(horaDe(c.salida))}${c.nota_salida ? ': ' + esc(c.nota_salida) : ''}</li>` : ''
-    ].filter(Boolean).join('');
-    const links = c.estado === 'agendada'
-      ? `<div class="row-links"><button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}">Reprogramar</button><button type="button" class="link-btn" data-act="novino" data-id="${esc(c.id)}">No vino</button></div>` : '';
+    const info = `<span class="avatar ${tono(f || c)}" aria-hidden="true">${esc(inicial(c.perro))}</span>
+        <span class="cita-info">
+          <span class="cita-name">${esc(c.perro)}</span>
+          <span class="cita-meta">${esc(hora12(c.hora))}${c.fecha !== today() ? ` (${esc(fmtDay(c.fecha))})` : ''} · ${esc(servicioPrincipal(c.servicios) || 'Sin servicio')}</span>
+          ${marcas.length ? `<span class="cita-chips">${marcas.join('')}</span>` : ''}
+        </span>`;
+    const abrir = f ? `<button type="button" class="cita-abrir" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(c.perro)}">${info}</button>` : `<div class="cita-abrir">${info}</div>`;
 
     return `<li class="cita estado-${esc(c.estado)}">
-      <div class="cita-main">
-        <span class="avatar" aria-hidden="true">${esc(inicial(c.perro))}</span>
-        <div class="cita-info">
-          <p class="cita-name">${esc(c.perro)}</p>
-          <p class="cita-meta">${esc(hora12(c.hora))}${c.fecha !== today() ? ` (${esc(fmtDay(c.fecha))})` : ''} · ${esc(servicioPrincipal(c.servicios) || 'Sin servicio')}</p>
-          <div class="cita-chips">${pasos(c.estado)}${chips.join('')}</div>
-        </div>
-        <div class="cita-cta">${cta}</div>
-      </div>
-      ${detalle || links ? `<details class="cita-more"><summary>Detalles</summary><ul class="det">${detalle}</ul>${links}</details>` : ''}
+      <div class="cita-main">${abrir}<div class="cita-cta">${cta}</div></div>
       ${form}
     </li>`;
   }
@@ -1698,6 +1916,7 @@
           <button type="button" class="link-btn" data-act="reprogramar" data-id="${esc(c.id)}" aria-label="Reprogramar la cita de ${esc(c.perro)}">Reprogramar</button></li>`).join('')}</ul>`
       : `<p class="mini-empty">No hay citas para mañana.</p>`;
 
+    if ($('#perfil').open) renderPerfil();
     if (abierto) $(`#nota-${CSS.escape(abierto.id)}`)?.focus();
   }
 
@@ -1721,6 +1940,8 @@
   });
 
   $('#view-hoy').addEventListener('click', async e => {
+    const pf = e.target.closest('[data-perfil]');
+    if (pf) { abrirPerfil(pf.dataset.perfil); return; }
     const b = e.target.closest('[data-act]');
     if (!b) return;
     const id = b.dataset.id, act = b.dataset.act;

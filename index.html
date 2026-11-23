@@ -67,7 +67,7 @@
           Nueva cita</button></li>
         <li><button type="button" class="nav-item" id="tab-registros" data-view="registros">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
-          Citas y fichas</button></li>
+          Perritos y citas</button></li>
         <li><button type="button" class="nav-item" id="tab-vip" data-view="vip">
           <svg viewBox="0 0 34 34" fill="currentColor" aria-hidden="true"><ellipse cx="17" cy="22.5" rx="7.5" ry="6.5"/><circle cx="8" cy="14" r="3.3"/><circle cx="13.5" cy="8.5" r="3.3"/><circle cx="20.5" cy="8.5" r="3.3"/><circle cx="26" cy="14" r="3.3"/></svg>
           Amigo VIP</button></li>
@@ -211,43 +211,47 @@
         <div class="done-actions">
           <button type="button" class="btn btn-primary" id="otroPerro">Agregar otro perro de este cliente</button>
           <button type="button" class="btn btn-ghost" id="again">Registrar otra cita</button>
-          <button type="button" class="btn btn-ghost" id="toRegistros">Ver registros</button>
+          <button type="button" class="btn btn-ghost" id="toRegistros">Ver perritos</button>
         </div>
       </div>
     </section>
 
     <section id="view-registros" aria-labelledby="tRegistros" hidden>
-      <div class="card reg">
-        <div class="reg-head">
-          <h2 id="tRegistros">Citas y fichas</h2>
+      <div class="reg-top">
+        <div>
+          <h2 id="tRegistros" class="page-title">Perritos y citas</h2>
           <p class="reg-stats" id="regStats"></p>
         </div>
-
-        <div class="migrate" id="migrate" hidden>
-          <p id="migrateText"></p>
-          <button type="button" class="btn btn-primary" id="migrateBtn">Subir a la base de datos</button>
+        <div class="reg-tools">
+          <button type="button" class="icon-btn" id="refresh" aria-label="Actualizar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" id="export">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+            Excel</button>
         </div>
-
-        <div class="actions">
-          <button type="button" class="btn btn-primary" id="export">Descargar Excel</button>
-          <button type="button" class="btn btn-ghost" id="refresh">Actualizar</button>
-        </div>
-
-        <div class="search">
-          <label for="buscar" class="sr-only">Buscar</label>
-          <input id="buscar" type="search" placeholder="Buscar perro, cliente o WhatsApp" autocomplete="off">
-        </div>
-        <p class="filtro" id="filtro" hidden>
-          Mostrando solo fichas sin frecuencia.
-          <button type="button" class="link-btn" id="quitarFiltro">Ver todas</button>
-        </p>
-
-        <div class="seg" role="tablist" aria-label="Tipo de registro">
-          <button class="seg-btn" role="tab" data-list="citas" aria-selected="true">Citas</button>
-          <button class="seg-btn" role="tab" data-list="fichas" aria-selected="false" tabindex="-1">Fichas</button>
-        </div>
-        <div id="list" aria-live="polite"></div>
       </div>
+
+      <div class="migrate" id="migrate" hidden>
+        <p id="migrateText"></p>
+        <button type="button" class="btn btn-primary" id="migrateBtn">Subir a la base de datos</button>
+      </div>
+
+      <div class="search search-ico">
+        <label for="buscar" class="sr-only">Buscar</label>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="buscar" type="search" placeholder="Buscar perrito, dueño o WhatsApp" autocomplete="off">
+      </div>
+      <p class="filtro" id="filtro" hidden>
+        Mostrando solo perritos sin frecuencia.
+        <button type="button" class="link-btn" id="quitarFiltro">Ver todos</button>
+      </p>
+
+      <div class="seg" role="tablist" aria-label="Qué mostrar">
+        <button class="seg-btn" role="tab" data-list="fichas" aria-selected="true">Perritos</button>
+        <button class="seg-btn" role="tab" data-list="citas" aria-selected="false" tabindex="-1">Citas</button>
+      </div>
+      <div id="list" aria-live="polite"></div>
     </section>
   </main>
 
@@ -265,6 +269,10 @@
         <button type="button" class="link-btn danger" id="sheetDelete" hidden>Eliminar ficha</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="perfil" class="perfil" aria-labelledby="perfilNombre">
+    <div id="perfilBody"></div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite">
