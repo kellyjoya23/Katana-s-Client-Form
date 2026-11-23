@@ -987,19 +987,25 @@
   const ICO_ALERTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>';
   const ICO_FLECHA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
 
-  function citaRow(c) {
+  // Fondo rojo que aparece al deslizar a la derecha para eliminar
+  const ICO_BASURA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+  const swBg = `<span class="sw-bg" aria-hidden="true">${ICO_BASURA}<span>Eliminar</span></span>`;
+
+  function citaRow(c, { conFecha = false, extra = '' } = {}) {
     const f = fichaDe(c);
     const est = c.estado === 'agendada' ? '' : `<span class="chip-s estado-${esc(c.estado)}">${esc(ESTADO_LABEL[c.estado] || c.estado)}</span>`;
+    const cuando = conFecha ? fmtDay(c.fecha) : hora12(c.hora);
     const cuerpo = `<span class="avatar ${tono(f || c)}" aria-hidden="true">${esc(inicial(c.perro))}</span>
       <span class="cita-info">
         <span class="cita-name">${esc(c.perro)}</span>
-        <span class="cita-meta">${esc(hora12(c.hora))} · ${esc(servicioPrincipal(c.servicios))}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span>
+        <span class="cita-meta">${esc(cuando)} · ${esc(servicioPrincipal(c.servicios))}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span>
       </span>
       ${est}`;
-    if (f) {
-      return `<li><button type="button" class="fila${c.estado === 'cancelada' ? ' cancelada' : ''}" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(c.perro)}, cita ${esc(fmtDay(c.fecha))} ${esc(hora12(c.hora))}">${cuerpo}<span class="fila-ir">${ICO_FLECHA}</span></button></li>`;
-    }
-    return `<li><div class="fila sin-ficha${c.estado === 'cancelada' ? ' cancelada' : ''}">${cuerpo}</div>${accionesCita(c)}</li>`;
+    const cls = `fila sw-front${c.estado === 'cancelada' ? ' cancelada' : ''}`;
+    const frente = f
+      ? `<button type="button" class="${cls}" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(c.perro)}, cita ${esc(fmtDay(c.fecha))} ${esc(hora12(c.hora))}">${cuerpo}<span class="fila-ir">${ICO_FLECHA}</span></button>`
+      : `<div class="${cls} sin-ficha">${cuerpo}</div>`;
+    return `<li class="sw${extra || !f ? ' sin-cerrar-li' : ''}" data-sw="cita" data-id="${esc(c.id)}"><div class="sw-track">${swBg}${frente}</div>${extra || (!f ? accionesCita(c) : '')}</li>`;
   }
 
   function perroCard(f) {
@@ -1010,7 +1016,7 @@
     const ult = citas.filter(c => c.ficha_id === f.id && c.estado === 'entregada').map(c => c.fecha).sort().pop();
     const linea = prox ? `Próxima: ${diaRelativo(prox.fecha) === 'Hoy' || diaRelativo(prox.fecha) === 'Mañana' ? diaRelativo(prox.fecha).toLowerCase() : fmtDay(prox.fecha)}, ${hora12(prox.hora)}`
       : ult ? `Última visita: ${fmtDay(ult)}` : 'Sin visitas todavía';
-    return `<li><button type="button" class="perro-card" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(f.perro)}">
+    return `<li class="sw" data-sw="ficha" data-id="${esc(f.id)}"><div class="sw-track">${swBg}<button type="button" class="perro-card sw-front" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(f.perro)}">
       <span class="avatar avatar-lg ${tono(f)}" aria-hidden="true">${esc(inicial(f.perro))}</span>
       <span class="perro-info">
         <span class="perro-name">${esc(f.perro)}${alerts.length ? `<span class="alerta-ico" title="${esc(alerts.join(' · '))}">${ICO_ALERTA}</span>` : ''}</span>
@@ -1019,7 +1025,7 @@
         ${v.sellos_total ? `<span class="vip-mini sm">${sellosMini(v.sellos)}</span>` : ''}
       </span>
       ${premiosPendientes(f).length ? '<span class="chip-s premio perro-premio">Premio</span>' : ''}
-    </button></li>`;
+    </button></div></li>`;
   }
 
   function renderList() {
@@ -1039,11 +1045,11 @@
       const sinCerrar = lista.filter(c => c.fecha < t && (c.estado === 'agendada' || c.estado === 'en_katana')).sort((a, b) => key(b).localeCompare(key(a)));
       const pas = lista.filter(c => c.fecha < t && !sinCerrar.includes(c)).sort((a, b) => key(b).localeCompare(key(a)));
       const dias = [...new Set(prox.map(c => c.fecha))];
-      const pasRow = c => citaRow(c).replace(`${esc(hora12(c.hora))} · `, `${esc(fmtDay(c.fecha))} · `);
+      const pasRow = c => citaRow(c, { conFecha: true });
       box.innerHTML =
-        (sinCerrar.length ? `<h3 class="group-title alerta-title">Sin cerrar · no suman sello hasta marcarlas</h3><ul class="filas">${sinCerrar.map(c => `<li class="sin-cerrar">${pasRow(c).replace(/^<li>|<\/li>$/g, '')}${fichaDe(c) ? accionesCita(c) : ''}</li>`).join('')}</ul>` : '') +
+        (sinCerrar.length ? `<h3 class="group-title alerta-title">Sin cerrar · no suman sello hasta marcarlas</h3><ul class="filas sin-cerrar">${sinCerrar.map(c => citaRow(c, { conFecha: true, extra: fichaDe(c) ? accionesCita(c) : '' })).join('')}</ul>` : '') +
         dias.map(d => `<h3 class="group-title">${esc(diaRelativo(d))}${d > addDays(t, 1) ? '' : ` · <span class="sub-date">${esc(fmtDay(d))}</span>`}</h3>
-          <ul class="filas">${prox.filter(c => c.fecha === d).map(citaRow).join('')}</ul>`).join('') +
+          <ul class="filas">${prox.filter(c => c.fecha === d).map(c => citaRow(c)).join('')}</ul>`).join('') +
         (pas.length ? `<h3 class="group-title">Pasadas</h3><ul class="filas">${pas.slice(0, 60).map(pasRow).join('')}</ul>` : '');
       return;
     }
@@ -1058,6 +1064,81 @@
     if (!sorted.length) { box.innerHTML = `<div class="empty"><p>Ningún perrito coincide${q ? ` con "${esc($('#buscar').value)}"` : ''}.</p></div>`; return; }
     box.innerHTML = `<ul class="perros">${sorted.map(perroCard).join('')}</ul>`;
   }
+
+  // ---------- Deslizar a la derecha para eliminar ----------
+  // Solo se puede eliminar lo que no tiene historial: citas que todavía no pasan (agendadas)
+  // y perritos sin citas. Lo demás se cancela o se marca "No vino", para no perder sellos.
+  let arrastre = null;
+  let anularClic = false;
+
+  function puedeEliminar(tipo, id) {
+    if (tipo === 'cita') {
+      const c = citas.find(x => x.id === id);
+      if (!c) return 'No se encontró la cita.';
+      if (c.estado !== 'agendada' || c.fecha < today()) return 'Esta cita ya pasó o ya se atendió, así que no se puede eliminar: se guarda en el historial y cuenta para los sellos. Si fue un error, márcala como "No vino".';
+      return '';
+    }
+    const n = citas.filter(c => c.ficha_id === id).length;
+    return n ? `Este perrito tiene ${plural(n, 'cita', 'citas')}, así que no se puede eliminar sin perder su historial y sus sellos.` : '';
+  }
+
+  async function eliminarRegistro(tipo, id) {
+    const motivo = puedeEliminar(tipo, id);
+    if (motivo) { toast(motivo); return false; }
+    if (tipo === 'cita') { await accionCita('eliminar', id); return !citas.some(x => x.id === id); }
+    const f = fichas.find(x => x.id === id);
+    if (!confirm(`¿Eliminar la ficha de ${f.perro}? Úsalo solo si fue un error o una prueba; no se puede deshacer.`)) return false;
+    const { data, error } = await sb.from('fichas').delete().eq('id', id).select('id');
+    if (error || !data?.length) { toast('No se pudo eliminar la ficha. Revisa tu conexión.'); return false; }
+    fichas = fichas.filter(x => x.id !== id);
+    avisos = avisos.filter(a => a.ficha_id !== id);
+    updateCount(); renderRegistros(); renderHoy();
+    toast(`Ficha de ${f.perro} eliminada`);
+    return true;
+  }
+
+  const listaEl = $('#list');
+  listaEl.addEventListener('pointerdown', e => {
+    const front = e.target.closest('.sw-front');
+    if (!front || e.button !== 0 || e.target.closest('.row-links')) return;
+    const li = front.closest('.sw');
+    arrastre = { li, front, x: e.clientX, y: e.clientY, dx: 0, activo: false, id: e.pointerId };
+  });
+  listaEl.addEventListener('pointermove', e => {
+    if (!arrastre || e.pointerId !== arrastre.id) return;
+    const dx = e.clientX - arrastre.x, dy = e.clientY - arrastre.y;
+    if (!arrastre.activo) {
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { arrastre = null; return; }  // está bajando la lista
+      if (dx < 12 || Math.abs(dx) < Math.abs(dy)) return;
+      arrastre.activo = true;
+      arrastre.front.setPointerCapture(e.pointerId);
+      arrastre.li.classList.add('sw-moviendo');
+    }
+    arrastre.dx = Math.max(0, dx);
+    const w = arrastre.front.offsetWidth;
+    arrastre.front.style.transform = `translateX(${Math.min(arrastre.dx, w)}px)`;
+    arrastre.li.classList.toggle('sw-listo', arrastre.dx > w * 0.35);
+  });
+  async function soltar(e) {
+    if (!arrastre || e.pointerId !== arrastre.id) return;
+    const { li, front, dx, activo } = arrastre;
+    arrastre = null;
+    if (!activo) return;
+    anularClic = true;                    // el toque no debe abrir el perfil
+    setTimeout(() => { anularClic = false; }, 350);
+    li.classList.remove('sw-moviendo');
+    const w = front.offsetWidth;
+    if (dx > w * 0.35) {
+      front.style.transform = `translateX(${w}px)`;
+      const ok = await eliminarRegistro(li.dataset.sw, li.dataset.id);
+      if (ok) return;                     // la lista ya se volvió a dibujar
+    }
+    front.style.transform = '';
+    li.classList.remove('sw-listo');
+  }
+  listaEl.addEventListener('pointerup', soltar);
+  listaEl.addEventListener('pointercancel', soltar);
+  listaEl.addEventListener('click', e => { if (anularClic) { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
 
   // ---------- Perfil de cada perrito ----------
   let perfilId = null;
@@ -1140,7 +1221,8 @@
 
       <section class="perfil-sec"><h3>Historial</h3>
         ${pasadas.length ? `<ul class="hist-list">${pasadas.map(citaItem).join('')}</ul>` : '<p class="mini-empty">Todavía no tiene visitas.</p>'}
-      </section>`;
+      </section>
+      ${suyas.length ? '' : `<div class="perfil-borrar"><button type="button" class="link-btn danger" data-p="borrar">Eliminar ficha</button></div>`}`;
   }
 
   perfil.addEventListener('click', e => {
@@ -1150,6 +1232,7 @@
     if (p && p.dataset.p === 'cerrar') { perfil.close(); return; }
     if (p && p.dataset.p === 'editar') { abrirEditarFicha(f); return; }
     if (p && p.dataset.p === 'nueva') { perfil.close(); nuevaCitaPara(f); return; }
+    if (p && p.dataset.p === 'borrar') { eliminarRegistro('ficha', f.id).then(ok => { if (ok && perfil.open) perfil.close(); }); return; }
     const b = e.target.closest('[data-cita]');
     if (b) { accionCita(b.dataset.cita, b.dataset.id); return; }
     const pr = e.target.closest('[data-premio]');

@@ -66,6 +66,7 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
 - **Menú lateral:** Inicio, Mensajes, Nueva cita, Citas y fichas, y Katana's VIP. En la computadora queda fijo a la izquierda; en el teléfono se abre con el botón de menú (arriba a la izquierda), que también muestra cuántos mensajes hay por enviar.
 - **Inicio (tablero):** saludo, cuatro tarjetas (citas de hoy, perros en Katana's, mensajes por enviar y premios Katana's VIP del día), la agenda de hoy con Recibir y Entregar, el resumen Katana's VIP (premios de hoy y perros que pierden su plazo esta semana) y las citas de mañana.
 - **Mensajes:** todos los mensajes por enviar, con filtros por tipo.
+- **Perritos y citas:** al deslizar un registro a la derecha se elimina (pide confirmación). Solo se pueden eliminar las citas que todavía no pasan y los perritos sin citas; lo que tiene historial se cancela o se marca "No vino", para no perder sellos.
 
 - **Hoy** (se abre al iniciar sesión):
   - **Citas de hoy:** **Recibir** guarda la hora de llegada y cómo llegó el perro; **Entregar**, la hora de salida y lo que se le hizo; **Reprogramar** cambia fecha u hora; **No vino** la marca como cancelada.
