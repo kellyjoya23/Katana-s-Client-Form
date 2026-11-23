@@ -19,24 +19,66 @@
 </head>
 <body>
   <a class="skip" href="#main">Saltar al contenido</a>
-  <header class="top">
+
+  <!-- Encabezado sin sesión (inicio de sesión) -->
+  <header class="top" id="topLogin">
     <div class="top-inner">
-      <!-- Para usar el logo oficial, reemplaza el contenido de este h1 por <img src="logo.svg" alt="Katana's Grooming" height="40"> -->
-      <h1 class="brand">
+      <!-- Para usar el logo oficial, reemplaza el contenido de .brand por <img src="logo.svg" alt="Katana's Grooming" height="40"> -->
+      <p class="brand">
         <span class="brand-mark" aria-hidden="true">K</span>
-        <span class="brand-text">
-          <span class="logo">Katana's</span>
-          <span class="sub">GROOMING</span>
-        </span>
-      </h1>
-      <button type="button" class="logout" id="logout" hidden>Cerrar sesión</button>
-      <div class="tabs" role="tablist" aria-label="Secciones" id="tabs" hidden>
-        <button class="tab" role="tab" id="tab-hoy" aria-controls="view-hoy" aria-selected="true">Hoy <span class="count" id="countHoy" hidden>0</span></button>
-        <button class="tab" role="tab" id="tab-nueva" aria-controls="view-nueva" aria-selected="false" tabindex="-1">Nueva cita</button>
-        <button class="tab" role="tab" id="tab-registros" aria-controls="view-registros" aria-selected="false" tabindex="-1">Registros</button>
-      </div>
+        <span class="brand-text"><span class="logo">Katana's</span><span class="sub">GROOMING</span></span>
+      </p>
     </div>
   </header>
+
+  <!-- Barra superior en el teléfono -->
+  <header class="mbar" id="mbar" hidden>
+    <button type="button" class="menu-btn" id="menuBtn" aria-controls="side" aria-expanded="false" aria-label="Abrir menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      <span class="count" id="countMenu" hidden>0</span>
+    </button>
+    <p class="brand">
+      <span class="brand-mark" aria-hidden="true">K</span>
+      <span class="brand-text"><span class="logo">Katana's</span><span class="sub">GROOMING</span></span>
+    </p>
+  </header>
+
+  <!-- Menú lateral (en el teléfono se abre como cajón) -->
+  <aside class="side" id="side" hidden aria-label="Menú">
+    <div class="side-head">
+      <p class="brand">
+        <span class="brand-mark" aria-hidden="true">K</span>
+        <span class="brand-text"><span class="logo">Katana's</span><span class="sub">GROOMING</span></span>
+      </p>
+      <button type="button" class="side-close" id="sideClose" aria-label="Cerrar menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <nav id="tabs" aria-label="Secciones">
+      <ul class="nav-list">
+        <li><button type="button" class="nav-item" id="tab-hoy" data-view="hoy" aria-current="page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="8" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="15" width="7" height="6" rx="2"/></svg>
+          Inicio</button></li>
+        <li><button type="button" class="nav-item" id="tab-mensajes" data-view="mensajes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/></svg>
+          Mensajes <span class="count" id="countHoy" hidden>0</span></button></li>
+        <li><button type="button" class="nav-item" id="tab-nueva" data-view="nueva">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M12 11v6M9 14h6"/></svg>
+          Nueva cita</button></li>
+        <li><button type="button" class="nav-item" id="tab-registros" data-view="registros">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+          Citas y fichas</button></li>
+        <li><button type="button" class="nav-item" id="tab-vip" data-view="vip">
+          <svg viewBox="0 0 34 34" fill="currentColor" aria-hidden="true"><ellipse cx="17" cy="22.5" rx="7.5" ry="6.5"/><circle cx="8" cy="14" r="3.3"/><circle cx="13.5" cy="8.5" r="3.3"/><circle cx="20.5" cy="8.5" r="3.3"/><circle cx="26" cy="14" r="3.3"/></svg>
+          Amigo VIP</button></li>
+      </ul>
+    </nav>
+    <div class="side-foot">
+      <p class="side-user" id="userEmail"></p>
+      <button type="button" class="logout" id="logout">Cerrar sesión</button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
 
   <main id="main" tabindex="-1">
     <p class="loading" id="loading">Cargando…</p>
@@ -77,27 +119,67 @@
       </form>
     </section>
 
-    <section id="view-hoy" role="tabpanel" aria-labelledby="tab-hoy" hidden>
-      <div class="card reg">
-        <div class="reg-head">
-          <h2>Hoy</h2>
-          <p class="reg-stats" id="hoyFecha"></p>
+    <section id="view-hoy" class="view-wide" aria-labelledby="saludo" hidden>
+      <div class="hello">
+        <h2 id="saludo">Buenos días</h2>
+        <p id="hoyFecha"></p>
+      </div>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="migrate" id="sinFrec" hidden>
+        <p id="sinFrecText"></p>
+        <button type="button" class="btn btn-ghost btn-sm" id="sinFrecBtn">Completar fichas</button>
+      </div>
+
+      <div class="dash">
+        <section class="panel panel-agenda" aria-labelledby="tAgenda">
+          <div class="panel-head">
+            <h3 id="tAgenda">Agenda de hoy</h3>
+            <button type="button" class="btn btn-primary btn-sm" data-go="nueva">Nueva cita</button>
+          </div>
+          <div id="hoyCitas"></div>
+        </section>
+
+        <div class="dash-side">
+          <section class="panel panel-vip" aria-labelledby="tVipHoy">
+            <div class="panel-head">
+              <h3 id="tVipHoy">Amigo VIP</h3>
+              <button type="button" class="link-btn" data-go="vip">Ver todo</button>
+            </div>
+            <div id="vipHoy"></div>
+          </section>
+          <section class="panel" aria-labelledby="tManana">
+            <div class="panel-head"><h3 id="tManana">Mañana</h3></div>
+            <div id="hoyManana"></div>
+          </section>
         </div>
-        <div class="migrate" id="sinFrec" hidden>
-          <p id="sinFrecText"></p>
-          <button type="button" class="btn btn-ghost btn-sm" id="sinFrecBtn">Completar fichas</button>
-        </div>
-        <h3 class="sec-title">Citas de hoy</h3>
-        <div id="hoyCitas"></div>
-        <h3 class="sec-title">Mensajes por enviar</h3>
-        <p class="note sec-note">Toca "Enviar por WhatsApp": se abre el chat del cliente con el mensaje listo.</p>
-        <div id="hoyMensajes"></div>
-        <h3 class="sec-title">Mañana</h3>
-        <div id="hoyManana"></div>
       </div>
     </section>
 
-    <section id="view-nueva" role="tabpanel" aria-labelledby="tab-nueva" hidden>
+    <section id="view-mensajes" aria-labelledby="tMensajes" hidden>
+      <div class="card reg">
+        <div class="reg-head">
+          <h2 id="tMensajes">Mensajes por enviar</h2>
+          <p class="reg-stats" id="msgStats"></p>
+        </div>
+        <p class="note sec-note">Toca "Enviar por WhatsApp": se abre el chat del cliente con el mensaje listo.</p>
+        <div class="seg seg-wrap" role="group" aria-label="Filtrar mensajes" id="msgFiltros"></div>
+        <div id="hoyMensajes"></div>
+      </div>
+    </section>
+
+    <section id="view-vip" aria-labelledby="tVip" hidden>
+      <div class="card reg">
+        <div class="reg-head">
+          <h2 id="tVip">Amigo VIP</h2>
+          <p class="reg-stats" id="vipStats"></p>
+        </div>
+        <div id="vipLista"></div>
+      </div>
+    </section>
+
+    <section id="view-nueva" aria-label="Nueva cita" hidden>
       <form id="form" class="card" novalidate>
         <div class="form-body">
           <div class="progress">
@@ -129,10 +211,10 @@
       </div>
     </section>
 
-    <section id="view-registros" role="tabpanel" aria-labelledby="tab-registros" hidden>
+    <section id="view-registros" aria-labelledby="tRegistros" hidden>
       <div class="card reg">
         <div class="reg-head">
-          <h2>Registros</h2>
+          <h2 id="tRegistros">Citas y fichas</h2>
           <p class="reg-stats" id="regStats"></p>
         </div>
 

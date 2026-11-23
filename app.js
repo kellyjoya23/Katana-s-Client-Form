@@ -753,17 +753,36 @@
     });
   }
 
+  // ---------- Menú lateral ----------
+  const VISTAS = ['hoy', 'mensajes', 'nueva', 'registros', 'vip'];
+  const movil = () => matchMedia('(max-width: 899px)').matches;
+
+  function abrirMenu(abrir) {
+    const side = $('#side');
+    const estaba = side.classList.contains('open');
+    if (!abrir && !estaba) return;
+    side.classList.toggle('open', abrir);
+    $('#scrim').hidden = !abrir;
+    $('#menuBtn').setAttribute('aria-expanded', String(abrir));
+    if (abrir) $('.nav-item[aria-current="page"]', side)?.focus();
+    else if (movil()) $('#menuBtn').focus({ preventScroll: true });
+  }
+  $('#menuBtn').addEventListener('click', () => abrirMenu(true));
+  $('#sideClose').addEventListener('click', () => abrirMenu(false));
+  $('#scrim').addEventListener('click', () => abrirMenu(false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#side').classList.contains('open')) abrirMenu(false); });
+
   function switchTab(which) {
-    marcarPestana($$('#tabs [role="tab"]'), $(`#tab-${which}`));
-    for (const t of ['hoy', 'nueva', 'registros']) $(`#view-${t}`).hidden = t !== which;
+    $$('.nav-item').forEach(b => { if (b.dataset.view === which) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    for (const t of VISTAS) $(`#view-${t}`).hidden = t !== which;
     if (which === 'registros') refresh();
-    if (which === 'hoy') refreshHoy();
+    if (which === 'hoy' || which === 'mensajes') refreshHoy();
+    if (which === 'vip') refreshVip();
+    if ($('#side').classList.contains('open')) abrirMenu(false);
     window.scrollTo({ top: 0 });
   }
-  $('#tab-hoy').addEventListener('click', () => switchTab('hoy'));
-  $('#tab-nueva').addEventListener('click', () => switchTab('nueva'));
-  $('#tab-registros').addEventListener('click', () => switchTab('registros'));
-  teclasPestanas($('#tabs'), t => switchTab(t.id.replace('tab-', '')));
+  $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-view]'); if (b) switchTab(b.dataset.view); });
+  document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) switchTab(b.dataset.go); });
 
   // ---------- Registros ----------
   let listMode = 'citas';
@@ -771,20 +790,20 @@
 
   function elegirLista(b) {
     listMode = b.dataset.list;
-    marcarPestana($$('.seg-btn'), b);
+    marcarPestana($$('#view-registros .seg-btn'), b);
     renderList();
   }
-  $$('.seg-btn').forEach(b => b.addEventListener('click', () => elegirLista(b)));
-  teclasPestanas($('.seg'), elegirLista);
+  $$('#view-registros .seg-btn').forEach(b => b.addEventListener('click', () => elegirLista(b)));
+  teclasPestanas($('#view-registros .seg'), elegirLista);
 
   $('#buscar').addEventListener('input', () => renderList());
   $('#quitarFiltro').addEventListener('click', () => { soloSinFrecuencia = false; renderList(); });
 
   function updateCount() {
     const n = pendientes().length;
-    $('#countHoy').textContent = n;
-    $('#countHoy').hidden = n === 0;
-    $('#tab-hoy').setAttribute('aria-label', n ? `Hoy, ${plural(n, 'mensaje', 'mensajes')} por enviar` : 'Hoy');
+    for (const id of ['#countHoy', '#countMenu']) { $(id).textContent = n; $(id).hidden = n === 0; }
+    $('#tab-mensajes').setAttribute('aria-label', n ? `Mensajes, ${plural(n, 'mensaje', 'mensajes')} por enviar` : 'Mensajes');
+    $('#menuBtn').setAttribute('aria-label', n ? `Abrir menú (${plural(n, 'mensaje', 'mensajes')} por enviar)` : 'Abrir menú');
   }
 
   async function refresh() {
@@ -1334,7 +1353,7 @@
     const locales = rows.map(r => ({ ...r, creado: new Date().toISOString() }));
     avisos.push(...locales);
     updateCount();
-    if (!$('#view-hoy').hidden) renderHoy();
+    renderHoy();
     const data = [];
     let error = null, repetido = false;
     for (const r of rows) {
@@ -1357,7 +1376,7 @@
       }
     }
     updateCount();
-    if (!$('#view-hoy').hidden) renderHoy();
+    renderHoy();
   }
 
   async function deshacerAviso(rows) {
@@ -1459,11 +1478,74 @@
   }
 
   let pendLista = [];
+  let msgFiltro = 'todos';
+  const FILTROS_MSG = [
+    ['todos', 'Todos'], ['listo', 'Listos para recoger'], ['confirmacion', 'Confirmaciones'],
+    ['dia_antes', 'Cita de mañana'], ['toca_volver', 'Le toca volver'], ['amigo_vip', 'Amigo VIP']
+  ];
+
+  const ICONOS = {
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+    tijera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-5A8 8 0 1 1 21 12z"/></svg>',
+    regalo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>'
+  };
+
+  // Perros que pierden el plazo de 30 días en la próxima semana y no tienen cita
+  function vipPorVencer() {
+    const t = today(), limite = addDays(t, 7);
+    return fichas.filter(f => {
+      const v = vipDe(f);
+      if (!v.sellos || v.sellos >= 10 || !v.vence || v.vence < t || v.vence > limite) return false;
+      return !citas.some(c => c.ficha_id === f.id && c.estado === 'agendada' && c.fecha >= t);
+    }).sort((a, b) => vipDe(a).vence.localeCompare(vipDe(b).vence));
+  }
+
+  function mensajeVence(f) {
+    const v = vipDe(f);
+    const nombre = primerNombre(f.nombre);
+    return `${nombre ? `¡Hola, ${nombre}!` : '¡Hola!'} ${f.perro} lleva ${v.sellos} de 10 sellos Amigo VIP. Si su próximo grooming completo es antes del ${fmtLong(v.vence)}, suma su sello ${v.sellos + 1}${VIP_PREMIOS[v.sellos + 1] ? ` y gana: ${premioTxt(v.sellos + 1).toLowerCase()}` : ''}. ¿Le agendamos? Respóndanos con el día y la hora que le quedan mejor.`;
+  }
+
+  function renderDashboard(deHoy) {
+    const h = new Date().getHours();
+    $('#saludo').textContent = h < 12 ? 'Buenos días' : h < 18 ? 'Buenas tardes' : 'Buenas noches';
+    const deHoyReal = deHoy.filter(c => c.fecha === today());
+    const n = e => deHoy.filter(c => c.estado === e).length;
+    const listos = pendLista.filter(it => it.tipo === 'listo').length;
+    const premios = [];
+    for (const c of deHoyReal) {
+      const f = fichaDe(c);
+      const pv = vipPrevision(c);
+      if (pv?.premio) premios.push({ perro: c.perro, txt: premioTxt(pv.premio), hora: c.hora });
+      if (f) for (const p of premiosPendientes(f)) premios.push({ perro: c.perro, txt: premioTxt(p.hito), hora: c.hora, pendiente: true });
+    }
+    const premiosHoy = premios.length;
+    const suman = deHoyReal.filter(c => vipPrevision(c)?.suma).length;
+    const sub = [n('agendada') && `${n('agendada')} por llegar`, n('entregada') && `${plural(n('entregada'), 'entregado', 'entregados')}`].filter(Boolean).join(' · ');
+    $('#stats').innerHTML = `
+      <div class="stat stat-lila"><span class="stat-ico">${ICONOS.cal}</span><p class="stat-label">Citas de hoy</p><p class="stat-num">${deHoyReal.length}</p><p class="stat-sub">${esc(sub || 'Sin citas')}</p></div>
+      <div class="stat stat-amarillo"><span class="stat-ico">${ICONOS.tijera}</span><p class="stat-label">En Katana's ahora</p><p class="stat-num">${n('en_katana')}</p><p class="stat-sub">${n('en_katana') === 1 ? 'perrito en grooming' : 'perritos en grooming'}</p></div>
+      <button type="button" class="stat stat-naranja" data-go="mensajes"><span class="stat-ico">${ICONOS.chat}</span><span class="stat-label">Mensajes por enviar</span><span class="stat-num">${pendLista.length}</span><span class="stat-sub">${listos ? `${plural(listos, 'listo', 'listos')} para recoger` : 'Ver mensajes'}</span></button>
+      <button type="button" class="stat stat-morado" data-go="vip"><span class="stat-ico">${ICONOS.regalo}</span><span class="stat-label">Premios VIP de hoy</span><span class="stat-num">${premiosHoy}</span><span class="stat-sub">${suman ? `${plural(suman, 'perrito suma', 'perritos suman')} sello hoy` : 'Ver Amigo VIP'}</span></button>`;
+
+    // Panel Amigo VIP del tablero
+    const vencen = vipPorVencer();
+    $('#vipHoy').innerHTML = `
+      <p class="mini-title">Premios de hoy</p>
+      ${premios.length ? `<ul class="mini-list">${premios.map(p => `<li><span class="mini-name">${esc(p.perro)}</span><span class="mini-meta">${esc(hora12(p.hora))} · ${esc(p.txt)}${p.pendiente ? ' (pendiente)' : ''}</span></li>`).join('')}</ul>`
+        : '<p class="mini-empty">Ningún perrito de hoy gana premio.</p>'}
+      <p class="mini-title">Pierden el plazo esta semana</p>
+      ${vencen.length ? `<ul class="mini-list">${vencen.slice(0, 5).map(f => `<li><span class="mini-name">${esc(f.perro)}</span><span class="mini-meta">${vipDe(f).sellos} de 10 · hasta el ${esc(fmtDay(vipDe(f).vence))}</span>
+          ${normWa(f.whatsapp).length === 8 ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensajeVence(f)))}" target="_blank" rel="noopener" aria-label="Escribir a ${esc(f.nombre)} por ${esc(f.perro)}">Escribir</a>` : ''}</li>`).join('')}</ul>
+          ${vencen.length > 5 ? `<button type="button" class="link-btn" data-go="vip">Ver los ${vencen.length}</button>` : ''}`
+        : '<p class="mini-empty">Nadie pierde su plazo en los próximos 7 días.</p>'}`;
+  }
 
   function renderHoy() {
     if (!$('#hoyFecha')) return;
     const t = today(), manana = addDays(t, 1);
-    $('#hoyFecha').textContent = fmtLong(t);
+    $('#hoyFecha').textContent = cap(fmtLong(t));
 
     const sinFrec = fichas.filter(f => !f.frecuencia).length;
     $('#sinFrec').hidden = sinFrec === 0;
@@ -1473,11 +1555,21 @@
       .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
     $('#hoyCitas').innerHTML = deHoy.length
       ? `<ul class="rows">${deHoy.map(hoyRow).join('')}</ul>`
-      : `<div class="empty"><p>No hay citas para hoy.</p></div>`;
+      : `<div class="empty"><p>No hay citas para hoy.</p><button type="button" class="btn btn-primary" data-go="nueva">Registrar una cita</button></div>`;
 
     pendLista = pendientes();
-    $('#hoyMensajes').innerHTML = pendLista.length
-      ? `<ul class="rows">${pendLista.map((it, i) => {
+    renderDashboard(deHoy);
+
+    // Mensajes: filtros con su cantidad
+    const cuenta = k => k === 'todos' ? pendLista.length : pendLista.filter(it => it.tipo === k).length;
+    if (msgFiltro !== 'todos' && !cuenta(msgFiltro)) msgFiltro = 'todos';
+    $('#msgStats').textContent = plural(pendLista.length, 'pendiente', 'pendientes');
+    $('#msgFiltros').innerHTML = FILTROS_MSG.filter(([k]) => k === 'todos' || cuenta(k))
+      .map(([k, l]) => `<button type="button" class="seg-btn" data-filtro="${k}" aria-pressed="${k === msgFiltro}">${esc(l)} <span class="seg-n">${cuenta(k)}</span></button>`).join('');
+    const visibles = pendLista.map((it, i) => [it, i]).filter(([it]) => msgFiltro === 'todos' || it.tipo === msgFiltro);
+
+    $('#hoyMensajes').innerHTML = visibles.length
+      ? `<ul class="rows">${visibles.map(([it, i]) => {
           const c = it.cita, f = it.ficha;
           const perro = it.citas ? perrosDe(it) : (c?.perro || f?.perro);
           const cliente = c?.cliente || f?.nombre || 'Cliente sin ficha';
@@ -1563,6 +1655,66 @@
     b.disabled = false;
   });
 
+  // ---------- Sección Amigo VIP ----------
+  async function refreshVip() {
+    renderVip();
+    try { await loadAll(); renderVip(); } catch (err) {
+      console.error(err);
+      toast(isAuthError(err) ? 'Tu sesión se cerró. Vuelve a iniciar sesión.' : 'No se pudo cargar Amigo VIP. Revisa tu conexión.');
+    }
+  }
+
+  function vipFila(f, extra = '') {
+    const v = vipDe(f);
+    const pend = premiosPendientes(f);
+    const wa = normWa(f.whatsapp).length === 8;
+    return `<li class="row ficha"><div>
+      <div class="vip-row-head"><p class="name">${esc(f.perro)}</p><p class="vip-count">${v.sellos}<span>/10</span></p></div>
+      <p class="meta">${esc(f.nombre)} · ${esc(f.whatsapp)}</p>
+      <div class="vip-mini" aria-label="${esc(`${v.sellos} de 10 sellos`)}">${sellosMini(v.sellos)}</div>
+      <p class="meta vip-meta">${esc(vipResumen(f))}</p>
+      ${pend.length ? `<ul class="tags">${pend.map(p => `<li class="tag premio">Premio por entregar: ${esc(premioTxt(p.hito))}</li>`).join('')}</ul>` : ''}
+      <div class="row-links">
+        ${extra}
+        ${wa ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensaje({ tipo: 'amigo_vip', ficha: f })))}" target="_blank" rel="noopener" data-tarjeta="${esc(f.id)}">Enviar tarjeta</a>` : ''}
+        ${pend.map(p => `<button type="button" class="link-btn" data-premio="${esc(f.id)}" data-ronda="${p.ronda}" data-hito="${p.hito}">Marcar premio entregado (sello ${p.hito})</button>`).join('')}
+      </div>
+    </div></li>`;
+  }
+
+  function renderVip() {
+    const box = $('#vipLista');
+    if (!box) return;
+    const conSellos = fichas.filter(f => vipDe(f).sellos_total > 0);
+    const conPremio = fichas.filter(f => premiosPendientes(f).length);
+    const vencen = vipPorVencer();
+    const ranking = [...conSellos].sort((a, b) => vipDe(b).sellos_total - vipDe(a).sellos_total || norm(a.perro).localeCompare(norm(b.perro)));
+    $('#vipStats').textContent = `${plural(conSellos.length, 'perro con sellos', 'perros con sellos')} · ${plural(canjes.length, 'premio entregado', 'premios entregados')}`;
+    const escribir = f => normWa(f.whatsapp).length === 8 ? `<a class="link-btn" href="${esc(waLink(f.whatsapp, mensajeVence(f)))}" target="_blank" rel="noopener">Recordarle que vuelva</a>` : '';
+    box.innerHTML = `
+      <p class="note">Cada grooming completo entregado suma un sello si el perro vuelve en un máximo de 30 días. Premios: sello 3, regalito sorpresa; 5, 10% de descuento; 7, tratamiento hidratante; 10, experiencia spa.</p>
+      ${conPremio.length ? `<h3 class="group-title">Premios por entregar</h3><ul class="rows">${conPremio.map(f => vipFila(f)).join('')}</ul>` : ''}
+      <h3 class="group-title">Pierden el plazo esta semana</h3>
+      ${vencen.length ? `<ul class="rows">${vencen.map(f => vipFila(f, escribir(f))).join('')}</ul>` : '<p class="mini-empty">Nadie pierde su plazo en los próximos 7 días.</p>'}
+      <h3 class="group-title">Todos los perros con sellos</h3>
+      ${ranking.length ? `<ul class="rows">${ranking.map(f => vipFila(f)).join('')}</ul>` : '<div class="empty"><p>Todavía ningún perro tiene sellos. Se suman solos al entregar un grooming completo.</p></div>'}`;
+  }
+
+  $('#vipLista').addEventListener('click', e => {
+    const pr = e.target.closest('[data-premio]');
+    if (pr) { accionPremio(pr).then(renderVip); return; }
+    const tj = e.target.closest('[data-tarjeta]');
+    if (tj) tarjetaEnviada(tj.dataset.tarjeta);
+  });
+
+  $('#msgFiltros').addEventListener('click', e => {
+    const b = e.target.closest('[data-filtro]');
+    if (!b) return;
+    msgFiltro = b.dataset.filtro;
+    renderHoy();
+    $(`#msgFiltros [data-filtro="${msgFiltro}"]`)?.focus();
+  });
+
   $('#hoyMensajes').addEventListener('click', e => {
     const send = e.target.closest('[data-send]');
     const skip = e.target.closest('[data-skip]');
@@ -1581,10 +1733,12 @@
     const logged = which === 'app';
     $('#view-login').hidden = which !== 'login';
     $('#view-reset').hidden = which !== 'reset';
-    $('#tabs').hidden = !logged;
-    $('#logout').hidden = !logged;
+    $('#side').hidden = !logged;
+    $('#mbar').hidden = !logged;
+    $('#topLogin').hidden = logged;
+    document.body.classList.toggle('logged', logged);
     if (logged) switchTab('hoy');
-    else { $('#view-hoy').hidden = true; $('#view-nueva').hidden = true; $('#view-registros').hidden = true; }
+    else { VISTAS.forEach(t => { $(`#view-${t}`).hidden = true; }); abrirMenu(false); }
   }
 
   function loginError(msg) {
@@ -1667,6 +1821,7 @@
     }
     if (started) return;
     started = true;
+    $('#userEmail').textContent = session.user?.email || '';
     showView('app');
     resetForm();
     try { await loadAll(); renderHoy(); } catch (err) {

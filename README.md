@@ -63,6 +63,10 @@ Para que el enlace de "Olvidé mi contraseña" lleve a la app, en Supabase → *
 
 ## Cómo funciona
 
+- **Menú lateral:** Inicio, Mensajes, Nueva cita, Citas y fichas, y Amigo VIP. En la computadora queda fijo a la izquierda; en el teléfono se abre con el botón de menú (arriba a la izquierda), que también muestra cuántos mensajes hay por enviar.
+- **Inicio (tablero):** saludo, cuatro tarjetas (citas de hoy, perros en Katana's, mensajes por enviar y premios Amigo VIP del día), la agenda de hoy con Recibir y Entregar, el resumen Amigo VIP (premios de hoy y perros que pierden su plazo esta semana) y las citas de mañana.
+- **Mensajes:** todos los mensajes por enviar, con filtros por tipo.
+
 - **Hoy** (se abre al iniciar sesión):
   - **Citas de hoy:** **Recibir** guarda la hora de llegada y cómo llegó el perro; **Entregar**, la hora de salida y lo que se le hizo; **Reprogramar** cambia fecha u hora; **No vino** la marca como cancelada.
   - **Mensajes por enviar:** la app arma cada mensaje y abre el WhatsApp del cliente con el texto listo. Al tocar **Enviar por WhatsApp** o **No enviar** aparece **Deshacer** por unos segundos, por si no se llegó a mandar.
