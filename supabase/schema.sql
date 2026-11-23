@@ -173,6 +173,7 @@ create unique index if not exists avisos_cita_unico
 create unique index if not exists avisos_volver_unico
   on public.avisos (tipo, canal, ficha_id, ref_fecha) where tipo = 'toca_volver';
 create index if not exists avisos_ficha_idx      on public.avisos (ficha_id);
+create index if not exists avisos_cita_idx       on public.avisos (cita_id);
 create index if not exists avisos_creado_por_idx on public.avisos (creado_por);
 
 revoke all on public.avisos from anon, authenticated;

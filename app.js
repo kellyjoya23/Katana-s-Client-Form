@@ -233,12 +233,19 @@
       sb.from('amigo_vip').select('*'),
       sb.from('canjes').select('*')
     ]);
-    for (const r of [f, c, a, v, k]) if (r.error) throw r.error;
+    for (const r of [f, c, a]) if (r.error) throw r.error;
     fichas = f.data;
     citas = c.data.map(x => ({ ...x, hora: hhmm(x.hora) }));
     avisos = a.data;
-    vip = Object.fromEntries(v.data.map(x => [x.ficha_id, x]));
-    canjes = k.data;
+    // Si Amigo VIP falla, la agenda sigue funcionando: solo se avisa
+    if (v.error || k.error) {
+      console.error(v.error || k.error);
+      if (isAuthError(v.error || k.error)) throw v.error || k.error;
+      toast('No se pudieron cargar los sellos Amigo VIP. La agenda funciona igual; toca Actualizar más tarde.');
+    } else {
+      vip = Object.fromEntries(v.data.map(x => [x.ficha_id, x]));
+      canjes = k.data;
+    }
     updateCount();
   }
 
@@ -256,7 +263,9 @@
   const vipDe = f => (f && vip[f.id]) || VIP_VACIO;
   const esGroomingCompleto = serv => asList(serv).some(s => norm(s).startsWith('grooming completo'));
   const diasEntre = (a, b) => Math.round((new Date(b + 'T12:00') - new Date(a + 'T12:00')) / 864e5);
-  const tarjetaUrl = f => `${location.origin}/tarjeta.html?c=${encodeURIComponent(f.codigo)}`;
+  // Siempre el dominio publicado: si el equipo abre una vista de prueba de Vercel, el cliente igual recibe un enlace que abre
+  const SITIO = 'https://katana-s-client-form.vercel.app';
+  const tarjetaUrl = f => `${SITIO}/tarjeta.html?c=${encodeURIComponent(f.codigo)}`;
   const premioTxt = h => VIP_PREMIOS[h];
 
   // Premios ganados que todavía no se marcan como entregados
@@ -763,6 +772,8 @@
     if (!abrir && !estaba) return;
     side.classList.toggle('open', abrir);
     $('#scrim').hidden = !abrir;
+    // Con el cajón abierto, el resto de la página no recibe foco ni toques
+    for (const el of [$('#main'), $('#mbar')]) el.inert = abrir;
     $('#menuBtn').setAttribute('aria-expanded', String(abrir));
     if (abrir) $('.nav-item[aria-current="page"]', side)?.focus();
     else if (movil()) $('#menuBtn').focus({ preventScroll: true });
@@ -840,6 +851,11 @@
     }
     if (c.estado === 'cancelada' && c.fecha >= t) {
       b.push(`<button type="button" class="link-btn" data-cita="reactivar" data-id="${esc(c.id)}">Reactivar</button>`);
+    }
+    // Citas que ya pasaron y nadie cerró: sin esto no suman sello Amigo VIP
+    if ((c.estado === 'agendada' || c.estado === 'en_katana') && c.fecha < t) {
+      b.push(`<button type="button" class="link-btn" data-cita="atendida" data-id="${esc(c.id)}">Sí vino: marcar entregada</button>`);
+      b.push(`<button type="button" class="link-btn" data-cita="cancelar" data-id="${esc(c.id)}">No vino</button>`);
     }
     return b.length ? `<div class="row-links">${b.join('')}</div>` : '';
   }
@@ -920,8 +936,21 @@
     if (!c) return;
     if (act === 'reprogramar') { abrirReprogramar(c); return; }
     if (act === 'cancelar') {
-      if (!confirm(`¿Cancelar la cita de ${c.perro} del ${fmtDay(c.fecha)}, ${hora12(c.hora)}? Queda en el historial como cancelada.`)) return;
+      const pasada = c.fecha < today();
+      if (!confirm(pasada
+        ? `¿Marcar que ${c.perro} no vino el ${fmtDay(c.fecha)}? Queda en el historial como cancelada.`
+        : `¿Cancelar la cita de ${c.perro} del ${fmtDay(c.fecha)}, ${hora12(c.hora)}? Queda en el historial como cancelada.`)) return;
       await actualizarCita(id, { estado: 'cancelada' }, `Cita de ${c.perro} cancelada`);
+      return;
+    }
+    if (act === 'atendida') {
+      if (!confirm(`¿${c.perro} sí vino el ${fmtDay(c.fecha)}? La cita queda como entregada y, si fue grooming completo, cuenta para Amigo VIP.`)) return;
+      // Sin hora de salida: así no aparece un "Listo para recoger" atrasado
+      const ok = await actualizarCita(id, { estado: 'entregada' }, null);
+      if (!ok) return;
+      try { await loadVip(); } catch { /* se actualiza al recargar */ }
+      updateCount(); renderRegistros(); renderHoy();
+      toast(`Cita de ${c.perro} del ${fmtDay(c.fecha)} marcada como entregada`);
       return;
     }
     if (act === 'reactivar') {
@@ -1511,7 +1540,7 @@
     const h = new Date().getHours();
     $('#saludo').textContent = h < 12 ? 'Buenos días' : h < 18 ? 'Buenas tardes' : 'Buenas noches';
     const deHoyReal = deHoy.filter(c => c.fecha === today());
-    const n = e => deHoy.filter(c => c.estado === e).length;
+    const n = e => (e === 'en_katana' ? deHoy : deHoyReal).filter(c => c.estado === e).length;
     const listos = pendLista.filter(it => it.tipo === 'listo').length;
     const premios = [];
     for (const c of deHoyReal) {
@@ -1546,6 +1575,10 @@
     if (!$('#hoyFecha')) return;
     const t = today(), manana = addDays(t, 1);
     $('#hoyFecha').textContent = cap(fmtLong(t));
+
+    const sinCerrar = citas.filter(c => (c.estado === 'agendada' || c.estado === 'en_katana') && c.fecha < t).length;
+    $('#sinCerrar').hidden = sinCerrar === 0;
+    $('#sinCerrarText').textContent = `${plural(sinCerrar, 'cita pasada sigue', 'citas pasadas siguen')} sin cerrar. Márcalas como entregadas o "No vino": las que no se cierran no suman sello Amigo VIP.`;
 
     const sinFrec = fichas.filter(f => !f.frecuencia).length;
     $('#sinFrec').hidden = sinFrec === 0;
