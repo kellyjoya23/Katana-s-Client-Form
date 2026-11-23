@@ -122,3 +122,117 @@ body {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 .pill-sub { margin: 6px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--fondo); }
+
+/* ---------- Guía para guardarla en la pantalla de inicio ---------- */
+.guia-intro { margin: -4px 0 12px; color: var(--soft); font-size: 15px; }
+.guia-tabs { display: inline-flex; padding: 4px; gap: 2px; border-radius: 999px; background: var(--fondo); margin-bottom: 14px; }
+.guia-tab { min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: none; cursor: pointer; font: inherit; font-weight: 700; color: var(--morado); }
+.guia-tab[aria-pressed="true"] { background: var(--morado); color: var(--blanco); }
+.guia-tab:focus-visible { outline: 3px solid var(--naranja); outline-offset: 2px; }
+.guia-wrap { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+.guia-pasos { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 15px; }
+.guia-pasos li::marker { color: var(--morado); font-weight: 700; }
+
+/* Teléfono en miniatura */
+.tel { width: 128px; height: 236px; padding: 7px; border-radius: 26px; background: var(--tinta); box-shadow: 0 16px 30px -18px rgba(31, 23, 71, .8); }
+.tel-pantalla { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 20px; background: var(--fondo); }
+.capa { position: absolute; inset: 0; }
+.tel { --dur: 7s; }
+
+/* Pantalla 1: la tarjeta abierta en el navegador */
+.capa-web { display: flex; flex-direction: column; background: var(--fondo); animation: web var(--dur) infinite; }
+.w-barra-top { height: 22px; display: flex; align-items: center; justify-content: space-between; padding: 0 7px; background: #fff; font-size: 8px; color: var(--soft); }
+.w-url { padding: 2px 6px; border-radius: 6px; background: var(--fondo); }
+.w-menu { font-size: 12px; font-weight: 700; color: var(--tinta); visibility: hidden; }
+.w-pase { flex: 1; margin: 8px; border-radius: 12px; background: var(--morado); display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 12px; }
+.w-pill { width: 46px; height: 9px; border-radius: 9px; background: var(--amarillo); }
+.w-nombre { width: 34px; height: 7px; border-radius: 4px; background: var(--blanco); opacity: .9; }
+.w-sellos { display: grid; grid-template-columns: repeat(5, 11px); gap: 4px; padding: 6px; border-radius: 8px; background: var(--blanco); }
+.w-sellos i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--lila); }
+.w-sellos i:nth-child(-n+3) { background: var(--morado); border-color: var(--morado); }
+.w-sellos i:nth-child(3) { background: var(--naranja); border-color: var(--naranja); }
+.w-barra-bottom { height: 26px; display: grid; place-items: center; background: #fff; }
+.w-share { width: 16px; height: 16px; color: #2D7CF6; }
+.w-share svg { width: 16px; height: 16px; }
+
+/* Pantalla 2: menú (hoja abajo en iPhone, menú arriba en Android) */
+.capa-menu {
+  inset: auto 6px 6px 6px; padding: 6px; border-radius: 12px; background: #fff;
+  box-shadow: 0 -6px 20px -8px rgba(31, 23, 71, .35); display: grid; gap: 5px;
+  animation: hoja var(--dur) infinite;
+}
+.m-fila { height: 16px; border-radius: 6px; background: var(--fondo); }
+.m-objetivo { display: flex; align-items: center; gap: 5px; padding: 0 5px; font-size: 7.5px; font-weight: 700; color: var(--tinta); animation: objetivo var(--dur) infinite; }
+.m-ico { width: 10px; height: 10px; display: grid; place-items: center; border: 1.2px solid currentColor; border-radius: 3px; font-size: 8px; line-height: 1; }
+.m-txt-android { display: none; }
+
+/* Pantalla 3: inicio del teléfono con el ícono nuevo */
+.capa-home {
+  display: grid; grid-template-columns: repeat(4, 22px); gap: 10px 7px; align-content: start; justify-content: center;
+  padding-top: 26px; background: linear-gradient(160deg, var(--lila), var(--morado));
+  animation: home var(--dur) infinite;
+}
+.h-app { width: 22px; height: 22px; border-radius: 7px; background: rgba(253, 253, 253, .45); }
+.h-katana { position: relative; display: grid; place-items: center; background: var(--amarillo); animation: icono var(--dur) infinite; }
+.h-katana b { font-family: var(--titulo); font-size: 12px; font-weight: 400; color: var(--morado); }
+.h-katana em { position: absolute; top: 25px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-style: normal; font-size: 6px; font-weight: 700; color: var(--blanco); }
+
+/* Dedo que toca */
+.dedo {
+  position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%;
+  background: rgba(244, 96, 54, .55); border: 2px solid rgba(253, 253, 253, .9);
+  animation: dedo-ios var(--dur) infinite;
+}
+
+/* Variante Android: menú arriba a la derecha */
+.os-android .w-menu { visibility: visible; }
+.os-android .w-share { visibility: hidden; }
+.os-android .capa-menu { inset: 24px 6px auto 30px; transform-origin: top right; animation-name: menu-android; }
+.os-android .m-txt-ios { display: none; }
+.os-android .m-txt-android { display: inline; }
+.os-android .dedo { animation-name: dedo-android; }
+
+@keyframes web { 0%, 55% { opacity: 1; } 60%, 100% { opacity: 0; } }
+@keyframes hoja { 0%, 22% { transform: translateY(120%); opacity: 1; } 28%, 55% { transform: none; opacity: 1; } 58%, 100% { transform: none; opacity: 0; } }
+@keyframes menu-android { 0%, 22% { transform: scale(.6); opacity: 0; } 28%, 55% { transform: none; opacity: 1; } 58%, 100% { transform: none; opacity: 0; } }
+@keyframes objetivo { 0%, 44% { background: var(--fondo); } 47%, 55% { background: var(--lila); } 60%, 100% { background: var(--fondo); } }
+@keyframes home { 0%, 55% { opacity: 0; } 60%, 100% { opacity: 1; } }
+@keyframes icono { 0%, 64% { transform: scale(0); } 70% { transform: scale(1.25); } 74%, 100% { transform: scale(1); } }
+/* Posiciones del dedo: compartir (abajo al centro) → opción del menú → se va */
+@keyframes dedo-ios {
+  0% { left: 70%; top: 70%; opacity: 0; transform: scale(1); }
+  8% { left: 50%; top: 93%; opacity: 1; transform: scale(1); }
+  17% { left: 50%; top: 93%; transform: scale(1); }
+  20% { left: 50%; top: 93%; transform: scale(.7); }
+  24% { left: 50%; top: 93%; transform: scale(1); }
+  36% { left: 45%; top: 72%; transform: scale(1); }
+  44% { left: 45%; top: 72%; transform: scale(1); }
+  47% { left: 45%; top: 72%; transform: scale(.7); }
+  52% { left: 45%; top: 72%; opacity: 1; transform: scale(1); }
+  58%, 100% { left: 45%; top: 72%; opacity: 0; }
+}
+@keyframes dedo-android {
+  0% { left: 60%; top: 40%; opacity: 0; transform: scale(1); }
+  8% { left: 90%; top: 5%; opacity: 1; transform: scale(1); }
+  17% { left: 90%; top: 5%; transform: scale(1); }
+  20% { left: 90%; top: 5%; transform: scale(.7); }
+  24% { left: 90%; top: 5%; transform: scale(1); }
+  36% { left: 62%; top: 27%; transform: scale(1); }
+  44% { left: 62%; top: 27%; transform: scale(1); }
+  47% { left: 62%; top: 27%; transform: scale(.7); }
+  52% { left: 62%; top: 27%; opacity: 1; transform: scale(1); }
+  58%, 100% { left: 62%; top: 27%; opacity: 0; }
+}
+
+/* Sin animación (preferencia del teléfono): queda la pantalla final quieta */
+@media (prefers-reduced-motion: reduce) {
+  .capa-web, .capa-menu, .dedo { display: none; }
+  .capa-home { opacity: 1; }
+  .h-katana { transform: none; }
+}
+@media (max-width: 360px) {
+  .guia-wrap { grid-template-columns: 1fr; justify-items: center; }
+}
+.h-katana { grid-row: 2; grid-column: 2; }
+.m-objetivo { white-space: nowrap; overflow: hidden; }
+.os-android .capa-menu { left: 22px; }

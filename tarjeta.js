@@ -65,8 +65,22 @@
     $('#cargando').hidden = true;
     $('#pase').hidden = false;
     $('#premiosBloque').hidden = false;
+    $('#guia').hidden = !!yaInstalada;
     $('#condiciones').hidden = false;
   }
+
+  // Si ya la abrió desde la pantalla de inicio, no hace falta la guía
+  const yaInstalada = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+  // Guía para guardarla: elige iPhone o Android según el teléfono, y se puede cambiar
+  function elegirOs(os) {
+    document.querySelectorAll('.guia-tab').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
+    $('#tel').className = `tel os-${os}`;
+    $('#pasosIos').hidden = os !== 'ios';
+    $('#pasosAndroid').hidden = os !== 'android';
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('.guia-tab'); if (b) elegirOs(b.dataset.os); });
+  elegirOs(/android/i.test(navigator.userAgent) ? 'android' : 'ios');
 
   async function iniciar() {
     const codigo = new URLSearchParams(location.search).get('c') || '';

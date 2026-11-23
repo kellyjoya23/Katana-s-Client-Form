@@ -40,6 +40,57 @@
       <a class="reservar" id="reservar" href="https://wa.me/50371616881" target="_blank" rel="noopener">Reservar por WhatsApp</a>
     </section>
 
+    <section class="bloque guia-bloque" id="guia" hidden aria-labelledby="tGuia">
+      <h2 id="tGuia">Guárdala en tu teléfono</h2>
+      <p class="guia-intro">Así la tienes a un toque, como una app. Tus sellos se actualizan solos.</p>
+      <div class="guia-tabs" role="group" aria-label="Tipo de teléfono">
+        <button type="button" class="guia-tab" data-os="ios" aria-pressed="true">iPhone</button>
+        <button type="button" class="guia-tab" data-os="android" aria-pressed="false">Android</button>
+      </div>
+
+      <div class="guia-wrap">
+        <!-- Animación: teléfono en miniatura (decorativa; los pasos van en texto al lado) -->
+        <div class="tel os-ios" id="tel" aria-hidden="true">
+          <div class="tel-pantalla">
+            <div class="capa capa-web">
+              <div class="w-barra-top"><span class="w-url">katana's…</span><span class="w-menu">⋮</span></div>
+              <div class="w-pase">
+                <span class="w-pill"></span>
+                <span class="w-nombre"></span>
+                <span class="w-sellos"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+              </div>
+              <div class="w-barra-bottom"><span class="w-share">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>
+              </span></div>
+            </div>
+            <div class="capa capa-menu">
+              <div class="m-fila"></div>
+              <div class="m-fila m-objetivo"><span class="m-ico">+</span><span class="m-txt-ios">Añadir a inicio</span><span class="m-txt-android">Agregar a inicio</span></div>
+              <div class="m-fila"></div>
+              <div class="m-fila"></div>
+            </div>
+            <div class="capa capa-home">
+              <span class="h-app"></span><span class="h-app"></span><span class="h-app"></span><span class="h-app"></span>
+              <span class="h-app"></span><span class="h-app"></span><span class="h-app"></span>
+              <span class="h-app h-katana"><b>K</b><em>Katana's VIP</em></span>
+            </div>
+            <span class="dedo"></span>
+          </div>
+        </div>
+
+        <ol class="guia-pasos os-ios" id="pasosIos">
+          <li>Abre esta página en <strong>Safari</strong>.</li>
+          <li>Toca <strong>Compartir</strong> (el cuadrito con la flecha hacia arriba).</li>
+          <li>Elige <strong>"Añadir a pantalla de inicio"</strong> y toca <strong>Añadir</strong>.</li>
+        </ol>
+        <ol class="guia-pasos os-android" id="pasosAndroid" hidden>
+          <li>Abre esta página en <strong>Chrome</strong>.</li>
+          <li>Toca el menú <strong>⋮</strong> (arriba a la derecha).</li>
+          <li>Elige <strong>"Agregar a la pantalla principal"</strong> y confirma.</li>
+        </ol>
+      </div>
+    </section>
+
     <section class="bloque" id="premiosBloque" hidden aria-labelledby="tPremios">
       <h2 id="tPremios">Tus premios</h2>
       <ul class="premios" id="premios"></ul>
@@ -55,7 +106,6 @@
         <li>Los premios no se acumulan con otras promociones.</li>
         <li>No aplica a servicios a domicilio.</li>
       </ul>
-      <p class="guardar"><strong>Guárdala en tu teléfono.</strong> En iPhone, toca Compartir y luego "Añadir a pantalla de inicio". En Android, abre el menú del navegador y toca "Agregar a la pantalla principal". Tus sellos se actualizan solos cada vez que la abres.</p>
     </section>
 
     <section class="bloque" id="error" hidden>
