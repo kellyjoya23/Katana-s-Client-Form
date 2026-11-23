@@ -334,17 +334,6 @@
     return { suma: true, ronda: Math.floor((total - 1) / 10) + 1, sello, premio: VIP_PREMIOS[sello] ? sello : null };
   }
 
-  // Resumen de la tarjeta para mostrar en la ficha
-  function vipResumen(f) {
-    const v = vipDe(f);
-    if (!v.sellos_total) return 'Katana\'s VIP: sin sellos todavía';
-    const ronda = v.ronda > 1 ? ` (tarjeta ${v.ronda})` : '';
-    const plazo = v.sellos === 10 ? 'tarjeta completa'
-      : v.vence >= today() ? `suma si vuelve antes del ${fmtDay(v.vence)}`
-      : 'pasó la fecha: la próxima visita no suma, pero conserva sus sellos';
-    return `Katana's VIP: ${v.sellos} de 10 sellos${ronda} · ${plazo}`;
-  }
-
   // Versión corta para listas
   function vipCorto(f) {
     const v = vipDe(f);
@@ -1797,15 +1786,6 @@
     }
   }
 
-  // Indicador de 3 pasos: por llegar → en Katana's → entregado
-  const PASOS = [['agendada', 'Por llegar'], ['en_katana', "En Katana's"], ['entregada', 'Entregado']];
-  function pasos(estado) {
-    const i = PASOS.findIndex(([k]) => k === estado);
-    return `<span class="pasos" aria-label="Estado: ${esc(PASOS[i]?.[1] || '')}">
-      ${PASOS.map((_, j) => `<span class="paso${j <= i ? ' on' : ''}" aria-hidden="true"></span>`).join('')}
-      <span class="paso-txt">${esc(PASOS[i]?.[1] || '')}</span></span>`;
-  }
-
   const inicial = n => (String(n || '?').trim()[0] || '?').toUpperCase();
   const PREMIO_CORTO = { 3: 'Regalito', 5: '10% desc.', 7: 'Hidratante', 10: 'Spa' };
 
@@ -1877,20 +1857,6 @@
     }
     return (sello ? `<span class="chip-s vip">${esc(sello)}</span>` : '')
       + (premios ? `<span class="chip-s premio">${premios > 1 ? `${premios} premios` : 'Premio'}</span>` : '');
-  }
-
-  function vipDetalle(c, f) {
-    if (!f || c.estado === 'cancelada') return [];
-    const out = [];
-    if (c.estado !== 'entregada') {
-      const pv = vipPrevision(c);
-      if (pv?.suma) out.push(`Katana's VIP: esta visita es el sello ${pv.sello} de 10${pv.premio ? `. Premio de hoy: ${premioTxt(pv.premio)}` : ''}`);
-      else if (pv) out.push(pv.motivo);
-    } else if (c.fecha >= VIP_LANZAMIENTO && esGroomingCompleto(c.servicios) && vipDe(f).ultima_visita === c.fecha && !vipDe(f).ultima_sumo) {
-      out.push('Katana\'s VIP: esta visita no sumó sello (más de 30 días)');
-    }
-    for (const p of premiosPendientes(f)) out.push(`Premio por entregar: ${premioTxt(p.hito)}`);
-    return out;
   }
 
   let pendLista = [];

@@ -849,3 +849,6 @@ button.cita-abrir { cursor: pointer; }
 .perfil-borrar { text-align: center; padding: 0 16px 20px; }
 @media (prefers-reduced-motion: reduce) { .sw-front { transition: none; } }
 .sw-front { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Auditoría: contraste */
+.eyebrow { color: #B33A17; }
+.premio-pend { background: rgba(31, 23, 71, .28); }
