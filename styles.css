@@ -902,3 +902,6 @@ button.cita-abrir { cursor: pointer; }
 .cal-n { display: block; min-width: 20px; padding: 0 5px; border-radius: 999px; background: var(--naranja); color: var(--tinta); font-size: 12px; font-weight: 700; line-height: 18px; text-align: center; }
 .cal-d[aria-pressed="true"] .cal-n { background: var(--amarillo); }
 .cal-d.pasado .cal-n { background: var(--lila); }
+/* Aviso con botón: ancho cómodo y el botón debajo del texto */
+.toast.has-action { width: min(420px, calc(100% - 32px)); flex-direction: column; align-items: flex-start; gap: 6px; }
+.toast.has-action .toast-btn { min-height: 40px; padding: 0; }

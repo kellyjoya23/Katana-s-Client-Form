@@ -49,7 +49,6 @@
     { v: 'TikTok', l: 'TikTok', ico: 'nota' }, { v: 'En el local', l: 'En el local', ico: 'tienda' }
   ];
   const TIPOS = [
-    { v: 'ficha', l: 'Ya tiene ficha', d: 'Lo buscamos por WhatsApp', ico: 'ficha' },
     { v: 'nuevo', l: 'Cliente nuevo', d: 'Primera vez en Katana\'s', ico: 'nuevo' },
     { v: 'antes', l: 'Cliente de antes', d: 'Ya venía, pero sin ficha', ico: 'reloj' }
   ];
@@ -76,7 +75,8 @@
     cita: {
       title: '¿Quién viene y qué se hará?',
       fields: [
-        { name: 'tipo', label: '¿El perro ya tiene ficha?', type: 'radio', options: TIPOS, cards: true, req: true },
+        { name: 'tipo', label: '¿Quién viene?', type: 'radio', options: TIPOS, cards: true, req: true,
+          hint: '¿Ya tiene ficha? <button type="button" class="link-btn" data-go="registros">Búscalo en Perritos y citas</button> y agenda desde su perfil, solo con día y hora.' },
         { name: 'principal', label: 'Servicio', type: 'radio', options: PRINCIPALES, other: true, cards: true, req: true },
         { name: 'adicionales', label: 'Adicionales', type: 'check', options: ADICIONALES, other: true, icons: true }
       ]
@@ -1241,7 +1241,7 @@
     const f = fichas.find(x => x.id === perfilId);
     if (p && p.dataset.p === 'cerrar') { perfil.close(); return; }
     if (p && p.dataset.p === 'editar') { abrirEditarFicha(f); return; }
-    if (p && p.dataset.p === 'nueva') { perfil.close(); nuevaCitaPara(f); return; }
+    if (p && p.dataset.p === 'nueva') { abrirCitaRapida(f); return; }
     if (p && p.dataset.p === 'borrar') { eliminarRegistro('ficha', f.id).then(ok => { if (ok && perfil.open) perfil.close(); }); return; }
     const b = e.target.closest('[data-cita]');
     if (b) { accionCita(b.dataset.cita, b.dataset.id); return; }
@@ -1252,17 +1252,6 @@
   });
   perfil.addEventListener('close', () => { perfilId = null; });
 
-  // Nueva cita ya con el perro elegido (cliente con ficha)
-  function nuevaCitaPara(f) {
-    if (!f) return;
-    switchTab('nueva');
-    resetForm();
-    setVal('tipo', 'ficha', form);
-    setVal('wa_b', f.whatsapp, form);
-    $('#f-perro_b').value = f.perro;
-    show();
-    toast(`Cita para ${f.perro}: elige día, hora y servicio`);
-  }
 
   // Acciones sobre citas (en Registros y en Hoy)
   async function accionCita(act, id) {
@@ -1345,7 +1334,7 @@
     sheetModo = { ...modo, campos };
     $('#sheetTitle').textContent = titulo;
     $('#sheetBody').innerHTML = campos.map(f => fieldHTML(f, 'x')).join('')
-      + (modo.tipo === 'cita' ? '<div id="xconflicto" class="warn" role="alert" hidden></div>' : '');
+      + (modo.tipo === 'cita' || modo.tipo === 'rapida' ? '<div id="xconflicto" class="warn" role="alert" hidden></div>' : '');
     for (const f of campos) setVal(f.name, valores[f.name], sheetForm);
     pintarDias(sheetForm); pintarHoras(sheetForm);
     $('#sheetErr').hidden = true;
@@ -1353,7 +1342,7 @@
     const sinCitas = modo.tipo === 'ficha' && !citas.some(c => c.ficha_id === modo.obj.id);
     $('#sheetDelete').hidden = !sinCitas;
     $('#sheetSave').disabled = false;
-    $('#sheetSave').textContent = 'Guardar cambios';
+    $('#sheetSave').textContent = modo.boton || 'Guardar cambios';
     sheet.showModal();
     sheet.querySelector('input, textarea')?.focus();
   }
@@ -1367,6 +1356,17 @@
   function abrirReprogramar(c) {
     abrirSheet(`Reprogramar la cita de ${c.perro}`, EDIT_CITA,
       { fecha: c.fecha, hora: c.hora, principal: servicioPrincipal(c.servicios), adicionales: serviciosAdicionales(c.servicios) }, { tipo: 'cita', obj: c });
+  }
+
+  // Cita para un perrito que ya tiene ficha: solo día y hora (el servicio viene de su última cita)
+  const CITA_RAPIDA = [...STEPS.cuando.fields, ...STEPS.cita.fields].filter(f => ['fecha', 'hora', 'principal', 'adicionales'].includes(f.name));
+  function abrirCitaRapida(f) {
+    if (!f) return;
+    const ult = citas.filter(c => c.ficha_id === f.id && c.estado !== 'cancelada').sort((a, b) => `${b.fecha}${b.hora}`.localeCompare(`${a.fecha}${a.hora}`))[0];
+    abrirSheet(`Nueva cita para ${f.perro}`, CITA_RAPIDA,
+      { principal: ult ? servicioPrincipal(ult.servicios) : 'Grooming completo', adicionales: ult ? serviciosAdicionales(ult.servicios) : [] },
+      { tipo: 'rapida', obj: f, boton: 'Agendar cita' });
+    sheet.querySelector('[data-dia]')?.focus();
   }
 
   function abrirEditarFicha(f) {
@@ -1387,6 +1387,32 @@
     if (!sheetModo || !validateFields(sheetModo.campos, sheetForm, 'x')) return;
     const btn = $('#sheetSave');
     sheetError('');
+    if (sheetModo.tipo === 'rapida') {
+      const f = sheetModo.obj;
+      const fecha = getVal('fecha', sheetForm), hora = getVal('hora', sheetForm);
+      if (avisarConflicto($('#xconflicto'), fecha, hora, null, f.whatsapp)) return;
+      btn.disabled = true; btn.textContent = 'Guardando…';
+      try {
+        const c = await insertCita({
+          fecha, hora, tipo: 'ficha', canal: null,
+          servicios: [getVal('principal', sheetForm), ...getVal('adicionales', sheetForm)].filter(Boolean),
+          ficha_id: f.id, whatsapp: f.whatsapp, perro: f.perro, cliente: f.nombre
+        });
+        sheet.close();
+        updateCount(); renderRegistros(); renderHoy();
+        const item = pendientes().find(it => it.tipo === 'confirmacion' && (it.citas || [it.cita]).some(x => x?.id === c.id));
+        const puedeAvisar = item && fecha >= today() && normWa(f.whatsapp).length === 8;
+        toast(`Cita de ${f.perro} agendada: ${fmtDay(fecha)}, ${hora12(hora)}`, puedeAvisar ? {
+          accion: 'Enviar confirmación',
+          fn: () => { window.open(waLink(f.whatsapp, mensaje(item)), '_blank', 'noopener'); registrarAviso(item, 'whatsapp', false, false); }
+        } : {});
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false; btn.textContent = 'Agendar cita';
+        sheetError(isAuthError(err) ? 'Tu sesión se cerró. Vuelve a iniciar sesión.' : 'No se pudo guardar la cita. Revisa tu conexión e intenta de nuevo.');
+      }
+      return;
+    }
     if (sheetModo.tipo === 'cita') {
       const c = sheetModo.obj;
       const fecha = getVal('fecha', sheetForm), hora = getVal('hora', sheetForm);
@@ -2332,6 +2358,10 @@
   let toastTimer;
   function toast(msg, opts = {}) {
     const t = $('#toast');
+    // Si hay una ventana abierta (perfil, edición), el aviso va dentro de ella para que se vea encima
+    const abiertas = $$('dialog[open]');
+    const destino = abiertas.length ? abiertas[abiertas.length - 1] : document.body;
+    if (t.parentElement !== destino) destino.appendChild(t);
     const btn = $('#toastBtn');
     $('#toastText').textContent = msg;
     btn.hidden = !opts.accion;
