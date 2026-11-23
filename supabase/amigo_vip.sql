@@ -158,3 +158,40 @@ alter table public.avisos add constraint avisos_tipo_check
   check (tipo in ('confirmacion', 'dia_antes', 'toca_volver', 'listo', 'amigo_vip'));
 create unique index if not exists avisos_vip_unico
   on public.avisos (tipo, canal, ficha_id) where tipo = 'amigo_vip';
+
+-- ============================================================
+-- Depurar registros de prueba
+-- ============================================================
+-- Citas: se pueden eliminar las que todavía no pasan (agendadas) y las canceladas (no cuentan para nada)
+drop policy if exists "Equipo elimina citas" on public.citas;
+create policy "Equipo elimina citas" on public.citas for delete to authenticated
+  using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo'
+         and (estado = 'cancelada'
+              or (estado = 'agendada' and fecha >= (now() at time zone 'America/El_Salvador')::date)));
+
+-- Eliminar un perrito con todo su historial (pruebas o duplicados). Solo el equipo;
+-- la app pide escribir el nombre del perrito antes de llamarla.
+create or replace function public.eliminar_ficha_completa(p_ficha uuid)
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  n int;
+begin
+  if coalesce((select auth.jwt()) -> 'app_metadata' ->> 'rol', '') <> 'equipo' then
+    raise exception 'Sin permiso' using errcode = '42501';
+  end if;
+  delete from public.citas where ficha_id = p_ficha;   -- sus avisos se borran en cascada
+  get diagnostics n = row_count;
+  delete from public.fichas where id = p_ficha;        -- avisos y canjes de la ficha, en cascada
+  if not found then
+    raise exception 'No existe la ficha' using errcode = 'P0002';
+  end if;
+  return n;
+end;
+$$;
+
+revoke all on function public.eliminar_ficha_completa(uuid) from public, anon;
+grant execute on function public.eliminar_ficha_completa(uuid) to authenticated;

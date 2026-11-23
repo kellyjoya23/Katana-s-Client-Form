@@ -1072,28 +1072,48 @@
   let anularClic = false;
 
   function puedeEliminar(tipo, id) {
-    if (tipo === 'cita') {
-      const c = citas.find(x => x.id === id);
-      if (!c) return 'No se encontró la cita.';
-      if (c.estado !== 'agendada' || c.fecha < today()) return 'Esta cita ya pasó o ya se atendió, así que no se puede eliminar: se guarda en el historial y cuenta para los sellos. Si fue un error, márcala como "No vino".';
-      return '';
-    }
-    const n = citas.filter(c => c.ficha_id === id).length;
-    return n ? `Este perrito tiene ${plural(n, 'cita', 'citas')}, así que no se puede eliminar sin perder su historial y sus sellos.` : '';
+    if (tipo !== 'cita') return '';
+    const c = citas.find(x => x.id === id);
+    if (!c) return 'No se encontró la cita.';
+    if (c.estado === 'cancelada' || (c.estado === 'agendada' && c.fecha >= today())) return '';
+    return 'Esta cita ya pasó o ya se atendió: se guarda en el historial y cuenta para los sellos. Si fue un error, márcala como "No vino". Si es una prueba, elimina al perrito completo.';
   }
 
   async function eliminarRegistro(tipo, id) {
     const motivo = puedeEliminar(tipo, id);
     if (motivo) { toast(motivo); return false; }
-    if (tipo === 'cita') { await accionCita('eliminar', id); return !citas.some(x => x.id === id); }
+    if (tipo === 'cita') {
+      const c = citas.find(x => x.id === id);
+      if (!confirm(`¿Eliminar la cita de ${c.perro} del ${fmtDay(c.fecha)}? No se puede deshacer.`)) return false;
+      const { data, error } = await sb.from('citas').delete().eq('id', id).select('id');
+      if (error || !data?.length) { toast('No se pudo eliminar la cita. Revisa tu conexión.'); return false; }
+      citas = citas.filter(x => x.id !== id);
+      avisos = avisos.filter(a => a.cita_id !== id);
+      try { await loadVip(); } catch { /* se actualiza al recargar */ }
+      updateCount(); renderRegistros(); renderHoy();
+      toast('Cita eliminada');
+      return true;
+    }
     const f = fichas.find(x => x.id === id);
-    if (!confirm(`¿Eliminar la ficha de ${f.perro}? Úsalo solo si fue un error o una prueba; no se puede deshacer.`)) return false;
-    const { data, error } = await sb.from('fichas').delete().eq('id', id).select('id');
-    if (error || !data?.length) { toast('No se pudo eliminar la ficha. Revisa tu conexión.'); return false; }
+    const n = citas.filter(c => c.ficha_id === id).length;
+    if (!n) {
+      if (!confirm(`¿Eliminar la ficha de ${f.perro}? No se puede deshacer.`)) return false;
+    } else {
+      // Con historial: confirmación fuerte, escribiendo el nombre
+      const escrito = prompt(`${f.perro} tiene ${plural(n, 'cita', 'citas')}. Se borrará con todo su historial y sus sellos, y no se puede deshacer.\n\nPara confirmar, escribe el nombre del perrito: ${f.perro}`);
+      if (escrito === null) return false;
+      if (norm(escrito) !== norm(f.perro)) { toast('El nombre no coincide. No se eliminó nada.'); return false; }
+    }
+    const { error } = n
+      ? await sb.rpc('eliminar_ficha_completa', { p_ficha: id })
+      : await sb.from('fichas').delete().eq('id', id).select('id').then(r => (r.error || !r.data?.length ? { error: r.error || new Error('no borrada') } : r));
+    if (error) { toast('No se pudo eliminar. Revisa tu conexión e inténtalo de nuevo.'); return false; }
     fichas = fichas.filter(x => x.id !== id);
+    citas = citas.filter(c => c.ficha_id !== id);
     avisos = avisos.filter(a => a.ficha_id !== id);
+    canjes = canjes.filter(k => k.ficha_id !== id);
     updateCount(); renderRegistros(); renderHoy();
-    toast(`Ficha de ${f.perro} eliminada`);
+    toast(n ? `${f.perro} y ${plural(n, 'su cita', 'sus citas')} eliminados` : `Ficha de ${f.perro} eliminada`);
     return true;
   }
 
@@ -1222,7 +1242,7 @@
       <section class="perfil-sec"><h3>Historial</h3>
         ${pasadas.length ? `<ul class="hist-list">${pasadas.map(citaItem).join('')}</ul>` : '<p class="mini-empty">Todavía no tiene visitas.</p>'}
       </section>
-      ${suyas.length ? '' : `<div class="perfil-borrar"><button type="button" class="link-btn danger" data-p="borrar">Eliminar ficha</button></div>`}`;
+      <div class="perfil-borrar"><button type="button" class="link-btn danger" data-p="borrar">${suyas.length ? 'Eliminar perrito y su historial' : 'Eliminar ficha'}</button></div>`;
   }
 
   perfil.addEventListener('click', e => {
