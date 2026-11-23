@@ -38,7 +38,7 @@ begin
       'cita', jsonb_build_object(
         'id', v_cita.id, 'fecha', v_cita.fecha, 'hora', v_cita.hora, 'estado', v_cita.estado,
         'perro', v_cita.perro, 'cliente', v_cita.cliente, 'whatsapp', v_cita.whatsapp,
-        'servicios', to_jsonb(v_cita.servicios))),
+        'servicios', to_jsonb(v_cita.servicios), 'lugar', v_cita.lugar, 'direccion', v_cita.direccion)),
     headers := '{"Content-Type": "application/json"}'::jsonb,
     timeout_milliseconds := 10000
   );
@@ -50,7 +50,7 @@ revoke all on function public.avisar_calendario() from public, anon, authenticat
 
 drop trigger if exists citas_calendario on public.citas;
 create trigger citas_calendario
-  after insert or delete or update of fecha, hora, estado, servicios, perro, cliente, whatsapp
+  after insert or delete or update of fecha, hora, estado, servicios, perro, cliente, whatsapp, lugar, direccion
   on public.citas
   for each row execute function public.avisar_calendario();
 

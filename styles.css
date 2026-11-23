@@ -905,3 +905,5 @@ button.cita-abrir { cursor: pointer; }
 /* Aviso con botón: ancho cómodo y el botón debajo del texto */
 .toast.has-action { width: min(420px, calc(100% - 32px)); flex-direction: column; align-items: flex-start; gap: 6px; }
 .toast.has-action .toast-btn { min-height: 40px; padding: 0; }
+.chip-s.domicilio { display: inline-flex; align-items: center; gap: 4px; background: var(--fondo); color: var(--morado); border: 1px solid var(--lila); }
+.chip-s.domicilio svg { width: 12px; height: 12px; }

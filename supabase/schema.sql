@@ -189,3 +189,10 @@ create policy "Equipo crea avisos" on public.avisos for insert to authenticated
   with check (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');
 create policy "Equipo elimina avisos" on public.avisos for delete to authenticated
   using (((select auth.jwt()) -> 'app_metadata' ->> 'rol') = 'equipo');
+
+-- Lugar de la cita (agregado después): en el local o a domicilio
+alter table public.citas
+  add column if not exists lugar text not null default 'local',
+  add column if not exists direccion text;
+alter table public.citas drop constraint if exists citas_lugar_check;
+alter table public.citas add constraint citas_lugar_check check (lugar in ('local', 'domicilio'));

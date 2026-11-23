@@ -27,8 +27,15 @@
     ficha: SVG('<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2M14 10h4M14 13h3"/>'),
     nuevo: SVG('<circle cx="10" cy="8" r="4"/><path d="M3 20c.8-3.5 3.6-5 7-5s4 .5 5 1.5M19 14v6M16 17h6"/>'),
     reloj: SVG('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
-    mas: SVG('<path d="M12 5v14M5 12h14"/>')
+    mas: SVG('<path d="M12 5v14M5 12h14"/>'),
+    casa: SVG('<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10M10 20v-6h4v6"/>')
   };
+  const LUGARES = [
+    { v: 'local', l: 'En el local', d: 'Lo traen a Katana\'s', ico: 'tienda' },
+    { v: 'domicilio', l: 'A domicilio', d: 'Vamos a su casa', ico: 'casa' }
+  ];
+  const LUGAR_LABEL = { local: 'En el local', domicilio: 'A domicilio' };
+  const esDomicilio = c => c?.lugar === 'domicilio';
   // Servicios con los nombres que Katana's usa con sus clientes
   const PRINCIPALES = [
     { v: 'Grooming completo', l: 'Grooming completo', d: 'Corte, baño, uñas, orejas', ico: 'tijera' },
@@ -86,6 +93,9 @@
       fields: [
         { name: 'fecha', label: 'Día', type: 'date', ui: 'dias', req: true },
         { name: 'hora', label: 'Hora', type: 'time', ui: 'horas', req: true },
+        { name: 'lugar', label: '¿Dónde?', type: 'radio', options: LUGARES, cards: true, req: true },
+        { name: 'direccion', label: 'Dirección', type: 'text', req: true, showIf: ['lugar', 'domicilio'],
+          placeholder: 'Colonia, calle, número de casa y una referencia' },
         { name: 'canal', label: '¿Por dónde agendó?', type: 'radio', options: CANALES, other: true, icons: true, req: true }
       ],
       after: '<div id="conflicto" class="warn" role="alert" hidden></div>'
@@ -170,7 +180,7 @@
 
   // Campos que se pueden editar en una ficha (todo menos el permiso de uso de datos)
   const EDIT_FICHA = [...STEPS.cliente.fields, ...STEPS.perro.fields, ...STEPS.salud.fields, ...PERMISOS];
-  const EDIT_CITA = [...STEPS.cuando.fields, ...STEPS.cita.fields].filter(f => ['fecha', 'hora', 'principal', 'adicionales'].includes(f.name));
+  const EDIT_CITA = [...STEPS.cuando.fields, ...STEPS.cita.fields].filter(f => ['fecha', 'hora', 'lugar', 'direccion', 'principal', 'adicionales'].includes(f.name));
   const servicioPrincipal = serv => asList(serv).find(x => PRINCIPALES.some(p => p.v === x)) || asList(serv)[0] || '';
   const serviciosAdicionales = serv => { const p = servicioPrincipal(serv); return asList(serv).filter(x => x !== p); };
 
@@ -178,6 +188,7 @@
   const CITA_COLS = [
     ['creado', 'Registrada el'], ['fecha', 'Fecha de la cita'], ['hora', 'Hora'],
     ['perro', 'Perro'], ['cliente', 'Cliente'], ['whatsapp', 'WhatsApp'], ['servicios', 'Servicios'],
+    ['lugar', 'Lugar'], ['direccion', 'Dirección'],
     ['canal', 'Agendó por'], ['tipo', 'Tipo de cliente'], ['estado', 'Estado'],
     ['llegada', 'Llegada'], ['nota_llegada', 'Nota de llegada'], ['salida', 'Salida'], ['nota_salida', 'Nota de entrega'],
     ['novedades', 'Novedades']
@@ -324,6 +335,7 @@
     const f = fichaDe(c);
     if (!f || c.estado === 'entregada' || c.estado === 'cancelada' || c.fecha < VIP_LANZAMIENTO) return null;
     const v = vipDe(f);
+    if (esDomicilio(c)) return { suma: false, motivo: 'No suma sello: los servicios a domicilio no aplican' };
     if (!esGroomingCompleto(c.servicios)) return { suma: false, motivo: 'No suma sello: solo cuenta el grooming completo' };
     if (v.ultima_visita === c.fecha && v.ultima_sumo) return { suma: false, motivo: 'Ya sumó su sello de hoy' };
     if (v.ultima_visita && diasEntre(v.ultima_visita, c.fecha) > VIP_DIAS) {
@@ -387,6 +399,19 @@
   const normOpt = o => typeof o === 'string' ? { v: o, l: o } : o;
 
   function fieldHTML(f, px = '') {
+    const html = fieldHTMLBase(f, px);
+    // Campo que solo aparece según otra respuesta (ej.: dirección si es a domicilio)
+    return f.showIf ? html.replace(`data-field="${f.name}"`, `data-field="${f.name}" data-show-if="${f.showIf.join('=')}" hidden`) : html;
+  }
+
+  function aplicarCondiciones(root) {
+    root.querySelectorAll('[data-show-if]').forEach(el => {
+      const [k, v] = el.dataset.showIf.split('=');
+      el.hidden = getVal(k, root) !== v;
+    });
+  }
+
+  function fieldHTMLBase(f, px = '') {
     const id = `${px}f-${f.name}`;
     const opt = f.req || f.type === 'consent' ? '' : '<span class="opt">opcional</span>';
     const hint = f.hint ? `<p class="hint" id="${px}h-${f.name}">${f.hint}</p>` : '';
@@ -407,7 +432,7 @@
     if (['text', 'tel', 'email', 'date', 'time'].includes(f.type)) {
       const extra = f.type === 'tel' ? 'inputmode="tel" autocomplete="off" placeholder="7123-4567"'
         : f.type === 'email' ? 'autocomplete="off" placeholder="nombre@gmail.com"'
-        : f.type === 'text' ? 'autocomplete="off"' : '';
+        : f.type === 'text' ? `autocomplete="off"${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ''}` : '';
       return `<div class="field" data-field="${f.name}">
         <label for="${id}">${f.label}${opt}</label>${hint}
         <input id="${id}" name="${f.name}" type="${f.type}" ${extra} ${f.list ? `list="${px}dl-${f.name}"` : ''} ${desc}>
@@ -550,6 +575,7 @@
   }
 
   function checkField(f, root = form) {
+    if (root.querySelector(`[data-field="${f.name}"]`)?.hidden) return '';   // campo escondido: no se pide
     const v = getVal(f.name, root);
     const empty = Array.isArray(v) ? v.length === 0 : !v;
     if (f.other && root.querySelector(`[name="${f.name}"][value="__otro"]:checked`) && !otherText(f.name, root)) {
@@ -603,6 +629,7 @@
         if (on && t.value === '__otro') other.focus();
       }
       showErr(t.name, '', root, px);
+      aplicarCondiciones(root);
       onInput?.(t);
     });
     root.addEventListener('input', e => {
@@ -650,7 +677,7 @@
     $('#next').textContent = last ? 'Guardar cita' : 'Siguiente';
     $('#saveErr').hidden = true;
     if (id === 'buscar') updateMatch();
-    if (id === 'cuando') { pintarDias(); pintarHoras(); }
+    if (id === 'cuando') { pintarDias(); pintarHoras(); if (!getVal('lugar')) setVal('lugar', 'local', form); aplicarCondiciones(form); }
     if (focus) {
       form.scrollIntoView({ block: 'start', behavior: 'auto' });
       $(`.step[data-step="${id}"] h2`).focus({ preventScroll: true });
@@ -740,7 +767,9 @@
     const tipo = getVal('tipo');
     const base = {
       fecha: getVal('fecha'), hora: getVal('hora'),
-      servicios: [getVal('principal'), ...getVal('adicionales')].filter(Boolean), canal: getVal('canal'), tipo
+      servicios: [getVal('principal'), ...getVal('adicionales')].filter(Boolean), canal: getVal('canal'), tipo,
+      lugar: getVal('lugar') || 'local',
+      direccion: getVal('lugar') === 'domicilio' ? (getVal('direccion') || null) : null
     };
     let note = '';
     let cita;
@@ -988,7 +1017,7 @@
     const cuerpo = `<span class="avatar ${tono(f || c)}" aria-hidden="true">${esc(inicial(c.perro))}</span>
       <span class="cita-info">
         <span class="cita-name">${esc(c.perro)}</span>
-        <span class="cita-meta">${esc(cuando)} · ${esc(servicioPrincipal(c.servicios))}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span>
+        <span class="cita-meta">${esc(cuando)} · ${esc(servicioPrincipal(c.servicios))}${esDomicilio(c) ? ' · A domicilio' : ''}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span>
       </span>
       ${est}`;
     const cls = `fila sw-front${c.estado === 'cancelada' ? ' cancelada' : ''}`;
@@ -1185,7 +1214,7 @@
     const citaItem = c => `<li class="hist">
         <span class="hist-fecha"><span class="hist-dia">${esc(new Date(c.fecha + 'T12:00').getDate())}</span><span class="hist-mes">${esc(new Date(c.fecha + 'T12:00').toLocaleDateString('es-SV', { month: 'short' }).replace('.', ''))}</span></span>
         <span class="hist-info"><span class="hist-serv">${esc(asList(c.servicios).join(', ') || 'Sin servicio')}</span>
-          <span class="hist-meta">${esc(hora12(c.hora))} · ${esc(ESTADO_LABEL[c.estado] || c.estado)}${c.nota_salida ? ` · ${esc(c.nota_salida)}` : ''}</span>
+          <span class="hist-meta">${esc(hora12(c.hora))} · ${esc(ESTADO_LABEL[c.estado] || c.estado)}${esDomicilio(c) ? ` · A domicilio${c.direccion ? ': ' + esc(c.direccion) : ''}` : ''}${c.nota_salida ? ` · ${esc(c.nota_salida)}` : ''}</span>
           ${accionesCita(c)}</span>
       </li>`;
 
@@ -1336,7 +1365,7 @@
     $('#sheetBody').innerHTML = campos.map(f => fieldHTML(f, 'x')).join('')
       + (modo.tipo === 'cita' || modo.tipo === 'rapida' ? '<div id="xconflicto" class="warn" role="alert" hidden></div>' : '');
     for (const f of campos) setVal(f.name, valores[f.name], sheetForm);
-    pintarDias(sheetForm); pintarHoras(sheetForm);
+    pintarDias(sheetForm); pintarHoras(sheetForm); aplicarCondiciones(sheetForm);
     $('#sheetErr').hidden = true;
     conflictoVisto = '';
     const sinCitas = modo.tipo === 'ficha' && !citas.some(c => c.ficha_id === modo.obj.id);
@@ -1355,16 +1384,20 @@
 
   function abrirReprogramar(c) {
     abrirSheet(`Reprogramar la cita de ${c.perro}`, EDIT_CITA,
-      { fecha: c.fecha, hora: c.hora, principal: servicioPrincipal(c.servicios), adicionales: serviciosAdicionales(c.servicios) }, { tipo: 'cita', obj: c });
+      { fecha: c.fecha, hora: c.hora, lugar: c.lugar || 'local', direccion: c.direccion || '', principal: servicioPrincipal(c.servicios), adicionales: serviciosAdicionales(c.servicios) }, { tipo: 'cita', obj: c });
   }
 
   // Cita para un perrito que ya tiene ficha: solo día y hora (el servicio viene de su última cita)
-  const CITA_RAPIDA = [...STEPS.cuando.fields, ...STEPS.cita.fields].filter(f => ['fecha', 'hora', 'principal', 'adicionales'].includes(f.name));
+  const CITA_RAPIDA = [...STEPS.cuando.fields, ...STEPS.cita.fields].filter(f => ['fecha', 'hora', 'lugar', 'direccion', 'principal', 'adicionales'].includes(f.name));
   function abrirCitaRapida(f) {
     if (!f) return;
     const ult = citas.filter(c => c.ficha_id === f.id && c.estado !== 'cancelada').sort((a, b) => `${b.fecha}${b.hora}`.localeCompare(`${a.fecha}${a.hora}`))[0];
     abrirSheet(`Nueva cita para ${f.perro}`, CITA_RAPIDA,
-      { principal: ult ? servicioPrincipal(ult.servicios) : 'Grooming completo', adicionales: ult ? serviciosAdicionales(ult.servicios) : [] },
+      {
+        principal: ult ? servicioPrincipal(ult.servicios) : 'Grooming completo', adicionales: ult ? serviciosAdicionales(ult.servicios) : [],
+        lugar: ult?.lugar || 'local',
+        direccion: citas.filter(c => c.ficha_id === f.id && c.direccion).sort((a, b) => b.fecha.localeCompare(a.fecha))[0]?.direccion || ''
+      },
       { tipo: 'rapida', obj: f, boton: 'Agendar cita' });
     sheet.querySelector('[data-dia]')?.focus();
   }
@@ -1395,6 +1428,8 @@
       try {
         const c = await insertCita({
           fecha, hora, tipo: 'ficha', canal: null,
+          lugar: getVal('lugar', sheetForm) || 'local',
+          direccion: getVal('lugar', sheetForm) === 'domicilio' ? (getVal('direccion', sheetForm) || null) : null,
           servicios: [getVal('principal', sheetForm), ...getVal('adicionales', sheetForm)].filter(Boolean),
           ficha_id: f.id, whatsapp: f.whatsapp, perro: f.perro, cliente: f.nombre
         });
@@ -1418,9 +1453,11 @@
       const fecha = getVal('fecha', sheetForm), hora = getVal('hora', sheetForm);
       if (avisarConflicto($('#xconflicto'), fecha, hora, c.id, c.whatsapp)) return;
       btn.disabled = true; btn.textContent = 'Guardando…';
-      const cambioHorario = fecha !== c.fecha || hora !== c.hora;
+      const cambioHorario = fecha !== c.fecha || hora !== c.hora || (getVal('lugar', sheetForm) || 'local') !== (c.lugar || 'local');
       const servicios = [getVal('principal', sheetForm), ...getVal('adicionales', sheetForm)].filter(Boolean);
-      const ok = await actualizarCita(c.id, { fecha, hora, servicios }, null);
+      const lugar = getVal('lugar', sheetForm) || 'local';
+      const direccion = lugar === 'domicilio' ? (getVal('direccion', sheetForm) || null) : null;
+      const ok = await actualizarCita(c.id, { fecha, hora, servicios, lugar, direccion }, null);
       if (!ok) { btn.disabled = false; btn.textContent = 'Guardar cambios'; sheetError('No se pudo guardar el cambio. Revisa tu conexión e intenta de nuevo.'); return; }
       sheet.close();
       if (cambioHorario) {
@@ -1481,6 +1518,7 @@
       if (BOOL_KEYS.includes(k)) v = siNo(v);
       if (k === 'tipo') v = TIPO_LABEL[v] || v;
       if (k === 'estado') v = ESTADO_LABEL[v] || v;
+      if (k === 'lugar') v = LUGAR_LABEL[v] || v;
       if (STAMP_KEYS.includes(k)) v = v ? stamp(v) : '';
       return v ?? '';
     });
@@ -1618,6 +1656,18 @@
     const c = item.cita, f = item.ficha;
     const nombre = primerNombre(c?.cliente || f?.nombre);
     const hola = nombre ? `¡Hola, ${nombre}!` : '¡Hola!';
+    if (item.tipo === 'confirmacion' && esDomicilio(c)) {
+      const lineas = [
+        conPunto(`Será un placer atender a ${perrosDe(item)} *a domicilio* el ${fmtLong(c.fecha)} a las ${hora12(c.hora)}${c.direccion ? `, en ${c.direccion}` : ''}`),
+        'El servicio de grooming tiene una duración aproximada de 2 a 3 horas, dependiendo del comportamiento de su mascota.',
+        'Si desea cancelar su cita, por favor háganoslo saber con al menos 1 hora de anticipación para permitir la liberación del espacio.'
+      ];
+      if (!c.direccion) lineas.push('Por favor, compártanos la dirección exacta y una referencia para llegar.');
+      if (esPrimeraVez(item)) {
+        lineas.push("Al confirmar su cita, nos autoriza a compartir fotos de su mascota en nuestras redes sociales, a guardar sus datos para agendar sus citas y a enviarle recordatorios por WhatsApp. Si no está de acuerdo con alguno, háganoslo saber por aquí.");
+      }
+      return lineas.join('\n\n');
+    }
     if (item.tipo === 'confirmacion') {
       const lineas = [
         conPunto(`Será un placer atender a ${perrosDe(item)} el ${fmtLong(c.fecha)} a las ${hora12(c.hora)}`),
@@ -1634,6 +1684,7 @@
     }
     if (item.tipo === 'dia_antes') {
       const cuando = item.atrasado ? `hoy a las ${hora12(c.hora)}` : `mañana, ${fmtLong(c.fecha)}, a las ${hora12(c.hora)}`;
+      if (esDomicilio(c)) return `${hola} Le recordamos que ${cuando} llegamos a su casa para atender a ${perrosDe(item)}${c.direccion ? ` (${c.direccion})` : ''}. Si no puede, por favor háganoslo saber con al menos 1 hora de anticipación.`;
       return `${hola} Le recordamos que ${cuando} esperamos a ${perrosDe(item)} en Katana's Grooming. Si no puede asistir, por favor háganoslo saber con al menos 1 hora de anticipación.`;
     }
     if (item.tipo === 'listo') {
@@ -1725,7 +1776,8 @@
       if (pideRecordatorio && c.fecha === manana) out.push(item('dia_antes'));
       // Si ayer no se envió el recordatorio y la cita es hoy más tarde, todavía sirve
       if (pideRecordatorio && c.fecha === t && localDate(c.creado) < addDays(t, -1) && c.hora > ahora) out.push(item('dia_antes', { atrasado: true }));
-      if (c.estado === 'entregada' && c.salida && localDate(c.salida) === t && !avisoDe('listo', 'whatsapp', { cita: c })) out.push(item('listo'));
+      // "Listo para recoger" solo aplica en el local
+      if (!esDomicilio(c) && c.estado === 'entregada' && c.salida && localDate(c.salida) === t && !avisoDe('listo', 'whatsapp', { cita: c })) out.push(item('listo'));
     }
     for (const f of fichas) {
       const dias = FREC_DIAS[f.frecuencia];
@@ -1845,6 +1897,7 @@
     const marcas = [];
     const vc = vipChip(c, f);
     if (vc) marcas.push(vc);
+    if (esDomicilio(c)) marcas.push(`<span class="chip-s domicilio" title="${esc(c.direccion || 'A domicilio')}">${IC.casa}A domicilio</span>`);
     if (alerts.length) marcas.push(`<span class="chip-s alerta" title="${esc(alerts.join(' · '))}">${ICO_ALERTA}<span class="sr-only">Cuidado: </span>${esc(alerts[0])}${alerts.length > 1 ? ` +${alerts.length - 1}` : ''}</span>`);
 
     const info = `<span class="avatar ${tono(f || c)}" aria-hidden="true">${esc(inicial(c.perro))}</span>
@@ -2098,7 +2151,7 @@
     const est = c.estado === 'agendada' ? '' : `<span class="chip-s estado-${esc(c.estado)}">${esc(ESTADO_LABEL[c.estado] || c.estado)}</span>`;
     const cuerpo = `<span class="avatar ${tono(f || c)}" aria-hidden="true">${esc(inicial(c.perro))}</span>
       <span class="cita-info"><span class="cita-name">${esc(c.perro)}</span>
-        <span class="cita-meta">${esc(hora12(c.hora))} · ${esc(servicioPrincipal(c.servicios))}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span></span>${est}`;
+        <span class="cita-meta">${esc(hora12(c.hora))} · ${esc(servicioPrincipal(c.servicios))}${esDomicilio(c) ? ' · A domicilio' : ''}${c.cliente ? ` · ${esc(primerNombre(c.cliente))}` : ''}</span></span>${est}`;
     return f
       ? `<li><button type="button" class="fila" data-perfil="${esc(f.id)}" aria-label="Ver perfil de ${esc(c.perro)}, ${esc(hora12(c.hora))}">${cuerpo}<span class="fila-ir">${ICO_FLECHA}</span></button></li>`
       : `<li><div class="fila sin-ficha">${cuerpo}</div></li>`;

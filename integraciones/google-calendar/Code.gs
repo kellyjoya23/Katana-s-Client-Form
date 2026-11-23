@@ -51,11 +51,13 @@ function guardarEvento(cita) {
   const inicio = fechaHora(cita.fecha, cita.hora);
   const fin = new Date(inicio.getTime() + duracion(cita.servicios) * 60000);
   const servicios = (cita.servicios || []).join(', ') || 'Cita';
-  const titulo = `${cita.perro} · ${servicios}`;
+  const domicilio = cita.lugar === 'domicilio';
+  const titulo = `${domicilio ? 'A domicilio · ' : ''}${cita.perro} · ${servicios}`;
   const notas = [
     cita.cliente ? `Cliente: ${cita.cliente}` : '',
     cita.whatsapp ? `WhatsApp: ${cita.whatsapp}` : '',
     `Servicios: ${servicios}`,
+    domicilio ? `A domicilio${cita.direccion ? ': ' + cita.direccion : ''}` : 'En el local',
     cita.estado === 'en_katana' ? 'Estado: en Katana\'s' : cita.estado === 'entregada' ? 'Estado: entregado' : '',
     '',
     'Agendada desde el CRM de Katana\'s. Si cambia la cita en el CRM, este evento se actualiza solo.',
@@ -70,8 +72,9 @@ function guardarEvento(cita) {
     evento.setTime(inicio, fin);
     evento.setTitle(titulo);
     evento.setDescription(notas);
+    evento.setLocation(domicilio ? (cita.direccion || '') : '');
   } else {
-    evento = cal.createEvent(titulo, inicio, fin, { description: notas });
+    evento = cal.createEvent(titulo, inicio, fin, { description: notas, location: domicilio ? (cita.direccion || '') : '' });
     evento.setTag('cita_id', cita.id);
     props.setProperty('cita_' + cita.id, evento.getId());
   }

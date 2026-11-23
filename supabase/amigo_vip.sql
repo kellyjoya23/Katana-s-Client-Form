@@ -4,7 +4,7 @@
 --
 -- Reglas (las mismas de la tarjeta impresa):
 --   · Cada perro tiene su propia tarjeta de 10 sellos.
---   · Suma un sello cada cita ENTREGADA con un grooming completo
+--   · Suma un sello cada cita ENTREGADA en el local con un grooming completo (a domicilio no suma)
 --     (Grooming completo, de deslanado o pelo corto).
 --   · Para sumar, el perro tiene que volver a más tardar 30 días después de su visita anterior.
 --     Si pasan más de 30 días, esa visita no suma, pero conserva los sellos que ya tenía
@@ -93,6 +93,7 @@ begin
     select distinct c.fecha
     from public.citas c
     where c.ficha_id = p_ficha and c.estado = 'entregada' and c.fecha >= lanzamiento
+      and c.lugar = 'local'                       -- a domicilio no suma sello
       and exists (select 1 from unnest(c.servicios) s where s ilike 'grooming completo%')
     order by c.fecha
   loop
